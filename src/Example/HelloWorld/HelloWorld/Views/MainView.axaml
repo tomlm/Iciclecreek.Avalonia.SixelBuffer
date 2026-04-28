@@ -159,12 +159,19 @@
       </Panel>
     </Panel>
 
-    <Button Grid.Row="1"
-            Content="Exit"
-            HorizontalAlignment="Center"
-            Margin="0,0,0,20"
-            Padding="20,8"
-            FontSize="16"
-            Click="OnExitClick"/>
+    <StackPanel Grid.Row="1"
+                Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                Spacing="12"
+                Margin="0,0,0,20">
+      <Button Content="Open File"
+              Padding="20,8"
+              FontSize="16"
+              Click="OnOpenFileClick"/>
+      <Button Content="Exit"
+              Padding="20,8"
+              FontSize="16"
+              Click="OnExitClick"/>
+    </StackPanel>
   </Grid>
 </UserControl>

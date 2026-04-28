@@ -13,6 +13,7 @@ using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
 using SkiaSharp;
 using Avalonia.Threading;
 using Avalonia;
+using System.Threading.Tasks;
 
 namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
 {
@@ -116,13 +117,19 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
         {
             var thread = new Thread(() =>
             {
-                foreach (var action in _renderQueue.GetConsumingEnumerable())
+                try
                 {
-                    try { action(); }
-                    catch (InvalidOperationException ex)
+                    foreach (var action in _renderQueue.GetConsumingEnumerable())
                     {
-                        System.Diagnostics.Debug.WriteLine($"[RenderThread] {ex.Message}");
+                        try { action(); }
+                        catch (InvalidOperationException ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[RenderThread] {ex.Message}");
+                        }
                     }
+                }
+                catch (TaskCanceledException)
+                {
                 }
             })
             {
@@ -544,7 +551,7 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
                     Volatile.Write(ref _pendingPalette, newPalette);
 
                     // Trigger a render on UI thread — compositor won't fire on its own if nothing visual changed
-                    Dispatcher.UIThread.Post(() => _consoleWindow.InvalidateRender());  
+                    Dispatcher.UIThread.Post(() => _consoleWindow.InvalidateRender());
                 }
             });
         }

@@ -1,10 +1,9 @@
 ﻿using Avalonia;
-using Avalonia.Dialogs;
 using System;
 
-namespace HelloWorld.Desktop
+namespace ControlCatalog.Desktop
 {
-    internal sealed class Program
+    internal class Program
     {
         // Initialization code. Don't use any Avalonia, third-party APIs or any
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -21,7 +20,6 @@ namespace HelloWorld.Desktop
                 .WithDeveloperTools()
 #endif
                 .WithInterFont()
-                .UseManagedSystemDialogs()
                 .LogToTrace();
     }
 }

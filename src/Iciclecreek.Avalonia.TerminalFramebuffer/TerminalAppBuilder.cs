@@ -62,7 +62,7 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer
                         .Bind<IPlatformRenderInterface>().ToConstant(sixelRenderInterface);
                 }, nameof(SixelRenderInterface));
         }
-
+        
         /// <summary>
         ///     Start the application with a console lifetime.
         /// </summary>

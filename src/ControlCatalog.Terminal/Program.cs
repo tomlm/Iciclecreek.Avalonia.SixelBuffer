@@ -1,13 +1,12 @@
-using System;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Dialogs;
 using Iciclecreek.Avalonia.TerminalFramebuffer;
-using ControlCatalog;
 
-namespace ControlCatalog
+namespace ControlCatalog.Terminal
 {
-    internal static class Program
+    internal class Program
     {
+
         [STAThread]
         private static void Main(string[] args)
         {
@@ -17,10 +16,14 @@ namespace ControlCatalog
 
         public static AppBuilder BuildAvaloniaApp()
         {
+#pragma warning disable CA1416 // Validate platform compatibility
             return AppBuilder.Configure<App>()
                 .UseStandardRuntimePlatformSubsystem()
-                .WithInterFont()                
-                .UseTerminal();
+                .WithInterFont()
+                .UseTerminal()
+                .UseManagedSystemDialogs();
+#pragma warning restore CA1416 // Validate platform compatibility
+
         }
     }
 }

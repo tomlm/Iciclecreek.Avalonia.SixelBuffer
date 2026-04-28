@@ -15,7 +15,7 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
         public IWindowImpl CreateWindow() => new TerminalWindow();
 
         public IWindowImpl CreateEmbeddableWindow()
-            => (IWindowImpl)new ManagedWindow();
+            => throw new NotSupportedException("Create Embeddable Window not supported in terminal mode.");
 
         public ITrayIconImpl CreateTrayIcon()
             => throw new NotSupportedException("Tray icons are not supported in terminal mode.");
@@ -45,6 +45,7 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
                 .Bind<IPlatformIconLoader>().ToConstant(new DummyIconLoader())
                 .Bind<IPlatformSettings>().ToConstant(new PlatformSettings())
                 .Bind<IRuntimePlatform>().ToConstant(new StandardRuntimePlatform());
+            ;
         }
     }
 
