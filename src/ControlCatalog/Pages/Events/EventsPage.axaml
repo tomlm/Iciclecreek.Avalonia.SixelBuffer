@@ -1,0 +1,138 @@
+<ContentPage xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:events="using:ControlCatalog.Pages.Events"
+             x:Class="ControlCatalog.Pages.Events.EventsPage"
+             x:DataType="events:EventsViewModel"
+             Header="Events">
+    <ContentPage.Styles>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="4 1" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+    </ContentPage.Styles>
+    <TabControl TabStripPlacement="Top">
+        <TabItem Header="Pointer">
+            <Grid ColumnDefinitions="* *">
+                <Grid RowDefinitions="Auto Auto Auto *"
+                      Background="Transparent"
+                      PointerMoved="OnPointerMoved"
+                      PointerPressed="OnPointerPressed"
+                      PointerReleased="OnPointerReleased"
+                      PointerWheelChanged="OnPointerWheelChanged">
+                    <TextBlock HorizontalAlignment="Center"
+                               TextDecorations="Underline">
+                        Mouse Events
+                    </TextBlock>
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding SelectedPointerEvent.Name}" />
+                    <TextBlock Grid.Row="2"
+                               Text="{Binding SelectedPointerEvent.Details}" />
+                </Grid>
+                <ListBox x:Name="PointerEvents"
+                         Margin="0 -1 0 -1"
+                         ItemsSource="{Binding PointerEvents}"
+                         SelectedItem="{Binding SelectedPointerEvent}"
+                         AutoScrollToSelectedItem="True"
+                         Grid.Column="1">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Summary}" Margin="0" Padding="0" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Keyboard">
+            <Grid ColumnDefinitions="* *">
+                <Grid RowDefinitions="Auto Auto Auto Auto *"
+                      Background="Transparent">
+                    <TextBlock HorizontalAlignment="Center"
+                               TextDecorations="Underline">
+                        Keyboard Events
+                    </TextBlock>
+                    <TextBox Height="60"
+                             Grid.Row="1"
+                             Watermark="Type here to see keyboard events"
+                             AcceptsReturn="True"
+                             KeyDown="OnKeyDown"
+                             KeyUp="OnKeyUp" />
+
+                    <TextBlock Grid.Row="2"
+                               Text="{Binding SelectedKeyboardEvent.Name}" />
+                    <TextBlock Grid.Row="3"
+                               Text="{Binding SelectedKeyboardEvent.Details}" />
+                </Grid>
+                <ListBox x:Name="KeyboardEvents"
+                         Margin="0 -1 0 -1"
+                         ItemsSource="{Binding KeyboardEvents}"
+                         SelectedItem="{Binding SelectedKeyboardEvent}"
+                         AutoScrollToSelectedItem="True"
+                         Grid.Column="1">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Summary}" Margin="0" Padding="0"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </TabItem>
+        <TabItem Header="RawMouse">
+            <Grid ColumnDefinitions="* *">
+                <Grid RowDefinitions="Auto Auto Auto *"
+                      PointerEntered="OnRawMouseEntered"
+                      PointerExited="OnRawMouseExited"
+                      Background="Transparent">
+                    <TextBlock HorizontalAlignment="Center"
+                               TextDecorations="Underline">
+                        Raw Mouse Events
+                    </TextBlock>
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding SelectedRawMouseEvent.Name}" />
+                    <TextBlock Grid.Row="2"
+                               Text="{Binding SelectedRawMouseEvent.Details}" />
+                </Grid>
+                <ListBox x:Name="RawMouseEvents"
+                         Margin="0 -1 0 -1"
+                         ItemsSource="{Binding RawMouseEvents}"
+                         SelectedItem="{Binding SelectedRawMouseEvent}"
+                         AutoScrollToSelectedItem="True"
+                         Grid.Column="1">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Summary}" Margin="0" Padding="0" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </TabItem>
+        <TabItem Header="RawKeyboard">
+            <Grid ColumnDefinitions="* *">
+                <StackPanel Orientation="Vertical">
+                    <TextBlock HorizontalAlignment="Center"
+                               TextDecorations="Underline">
+                        Raw Keyboard Events
+                    </TextBlock>
+                    <TextBox Height="60"
+                             Watermark="Type here to see raw keyboard events"
+                             AcceptsReturn="True"
+                             GotFocus="OnRawKeyboardGotFocus"
+                             LostFocus="OnRawKeyboardLostFocus" />
+                    <TextBlock Text="{Binding SelectedRawKeyboardEvent.Name}" />
+                    <TextBlock Text="{Binding SelectedRawKeyboardEvent.Details}" />
+                </StackPanel>
+                <ListBox x:Name="RawKeyboardEvents"
+                         Margin="0 -1 0 -1"
+                         ItemsSource="{Binding RawKeyboardEvents}"
+                         SelectedItem="{Binding SelectedRawKeyboardEvent}"
+                         AutoScrollToSelectedItem="True"
+                         Grid.Column="1">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Summary}" Margin="0" Padding="0" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </TabItem>
+    </TabControl>
+</ContentPage>

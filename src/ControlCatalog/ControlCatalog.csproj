@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Nullable>enable</Nullable>
+        <NoWarn>$(NoWarn);CA1031</NoWarn>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AvaloniaTerminalBuffer\AvaloniaTerminalBuffer.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**\*" />
+        <EmbeddedResource Include="Assets\Fonts\*.ttf" />
+        <EmbeddedResource Include="Pages\teapot.bin" Condition="Exists('Pages\teapot.bin')" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.0.1" />
+        <PackageReference Include="Avalonia.Skia" Version="12.0.1" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
+        <PackageReference Include="Avalonia.Themes.Simple" Version="12.0.1" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
+        <PackageReference Include="Avalonia.Controls.ColorPicker" Version="12.0.1" />
+        <PackageReference Include="System.Reactive" Version="6.1.0" />
+        <PackageReference Include="Iciclecreek.Avalonia.WindowManager" Version="4.0.1" />
+    </ItemGroup>
+
+</Project>

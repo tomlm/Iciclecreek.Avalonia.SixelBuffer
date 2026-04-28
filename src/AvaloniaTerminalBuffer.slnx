@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ControlCatalog/ControlCatalog.csproj" />
+  <Project Path="AvaloniaTerminalBuffer/AvaloniaTerminalBuffer.csproj" />
+</Solution>
