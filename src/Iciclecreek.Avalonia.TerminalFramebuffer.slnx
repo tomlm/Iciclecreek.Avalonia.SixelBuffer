@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Example/">
+    <Project Path="Example/HelloWorld/HelloWorld.Desktop/HelloWorld.Desktop.csproj" Id="bc20feea-cdda-4a4d-ab07-73f5b1d457ba" />
+    <Project Path="Example/HelloWorld/HelloWorld.Terminal/HelloWorld.Terminal.csproj" />
+    <Project Path="Example/HelloWorld/HelloWorld/HelloWorld.csproj" Id="db7651d8-3960-4f6d-a571-de7f5071ded9" />
+  </Folder>
+  <Project Path="ControlCatalog/ControlCatalog.csproj" />
+  <Project Path="Iciclecreek.Avalonia.TerminalFrameBuffer/Iciclecreek.Avalonia.TerminalFrameBuffer.csproj" />
+</Solution>

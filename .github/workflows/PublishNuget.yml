@@ -16,14 +16,14 @@ jobs:
           dotnet-version: 10.0.x
   
       - name: Restore dependencies
-        run: dotnet restore src/AvaloniaTerminalBuffer.slnx
+        run: dotnet restore src/Iciclecreek.Avalonia.TerminalFrameBuffer.slnx
 
       - name: Build
-        run: dotnet build src/AvaloniaTerminalBuffer.slnx -c Release --no-restore 
+        run: dotnet build src/Iciclecreek.Avalonia.TerminalFrameBuffer.slnx -c Release --no-restore 
   
       - name: dotnet pack 
         run: |
-          dotnet pack --no-build src/AvaloniaTerminalBuffer.slnx -c Release -o packages --include-symbols --property WarningLevel=0
+          dotnet pack --no-build src/Iciclecreek.Avalonia.TerminalFrameBuffer.slnx -c Release -o packages --include-symbols --property WarningLevel=0
 
       - name: Publish NuGet and symbols
         id: nuget-push

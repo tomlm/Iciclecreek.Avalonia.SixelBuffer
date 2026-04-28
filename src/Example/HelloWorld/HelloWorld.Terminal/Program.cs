@@ -1,10 +1,10 @@
+﻿using Avalonia;
 using System;
 using Avalonia;
 using Avalonia.Dialogs;
 using Iciclecreek.Avalonia.TerminalFramebuffer;
-using ControlCatalog;
 
-namespace ControlCatalog
+namespace HelloWorld.Terminal
 {
     internal static class Program
     {
@@ -19,7 +19,7 @@ namespace ControlCatalog
         {
             return AppBuilder.Configure<App>()
                 .UseStandardRuntimePlatformSubsystem()
-                .WithInterFont()                
+                .WithInterFont()
                 .UseTerminal();
         }
     }

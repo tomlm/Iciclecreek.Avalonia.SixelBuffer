@@ -6,7 +6,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
-using Avalonia.Terminal.Terminal;
+using Iciclecreek.Avalonia.TerminalFramebuffer.Platform;
+using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
 
 namespace ControlCatalog.Pages.Events
 {
@@ -156,7 +157,7 @@ namespace ControlCatalog.Pages.Events
         {
             if (_terminal != null) return;
             var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel?.PlatformImpl is Avalonia.Terminal.Platform.TerminalWindow tw)
+            if (topLevel?.PlatformImpl is TerminalWindow tw)
                 _terminal = tw.Terminal;
         }
     }
