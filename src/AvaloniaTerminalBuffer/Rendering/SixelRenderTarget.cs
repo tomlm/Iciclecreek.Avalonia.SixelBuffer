@@ -1,3 +1,4 @@
+//#define DEBUG_RESERVED_COLORS
 #nullable enable
 using System;
 using System.Collections.Concurrent;
@@ -36,6 +37,7 @@ namespace Avalonia.Terminal.Rendering
 
         // Cached palette from last full frame (reused for dirty rect encoding)
         private byte[]? _cachedPalette;
+        private int _cachedReservedCount;
 
         // Background thread sets this when it computes a new palette
         private byte[]? _pendingPalette;
@@ -230,12 +232,18 @@ namespace Avalonia.Terminal.Rendering
 
                 if (fullFrame)
                 {
-                    Sixel sixel = Sixel.CreateFromBitmap(renderFrame, visW, visH, cellW, cellH, palette);
-                    if (palette == null)
-                        _cachedPalette = sixel.Palette;
+                    // Always run fresh Quantize on full frames so frequency-based
+                    // reserved colors are computed from the current frame content
+                    Sixel sixel = Sixel.CreateFromBitmap(renderFrame, visW, visH, cellW, cellH);
+                    _cachedPalette = sixel.Palette;
+                    _cachedReservedCount = sixel.ReservedCount;
 
                     _terminal.SetCaretPosition(new CellPosition(0, 0));
+#if DEBUG_RESERVED_COLORS
+                    _terminal.WriteSixel(new CellPosition(0, 0), sixel.CreateDebugCopy());
+#else
                     _terminal.WriteSixel(new CellPosition(0, 0), sixel);
+#endif
                 }
                 else
                 {
@@ -340,10 +348,14 @@ namespace Avalonia.Terminal.Rendering
             for (int y = 0; y < cellH; y++)
                 Array.Copy(frame, ((py + y) * fbW + px) * 4, region, y * clampedW * 4, clampedW * 4);
 
-            Sixel sixel = Sixel.CreateFromBitmap(region, clampedW, cellH, cellW, cellH, _cachedPalette);
+            Sixel sixel = Sixel.CreateFromBitmap(region, clampedW, cellH, cellW, cellH, _cachedPalette, _cachedReservedCount);
             var pos = new CellPosition((ushort)col, (ushort)row);
             _terminal.SetCaretPosition(pos);
+#if DEBUG_RESERVED_COLORS
+            _terminal.WriteSixel(pos, sixel.CreateDebugCopy());
+#else
             _terminal.WriteSixel(pos, sixel);
+#endif
         }
 
         private SKBitmap? _cleanFrameBitmap;
@@ -389,10 +401,14 @@ namespace Avalonia.Terminal.Rendering
 
             cellBitmap.Dispose();
 
-            Sixel sixel = Sixel.CreateFromBitmap(composited, clampedW, cellH, cellW, cellH, _cachedPalette);
+            Sixel sixel = Sixel.CreateFromBitmap(composited, clampedW, cellH, cellW, cellH, _cachedPalette, _cachedReservedCount);
             var pos = new CellPosition((ushort)col, (ushort)row);
             _terminal.SetCaretPosition(pos);
+#if DEBUG_RESERVED_COLORS
+            _terminal.WriteSixel(pos, sixel.CreateDebugCopy());
+#else
             _terminal.WriteSixel(pos, sixel);
+#endif
         }
 
 
@@ -476,11 +492,15 @@ namespace Avalonia.Terminal.Rendering
                 Array.Copy(current, srcOffset, regionBgrx, dstOffset, Math.Min(regionW, width - pixelX) * 4);
             }
 
-            Sixel sixel = Sixel.CreateFromBitmap(regionBgrx, paddedW, paddedH, cellW, cellH, _cachedPalette);
+            Sixel sixel = Sixel.CreateFromBitmap(regionBgrx, paddedW, paddedH, cellW, cellH, _cachedPalette, _cachedReservedCount);
             _cachedPalette ??= sixel.Palette; // cache on first use if no full frame yet
             var pos = new CellPosition((ushort)minCol, (ushort)minRow);
             _terminal.SetCaretPosition(pos);
+#if DEBUG_RESERVED_COLORS
+            _terminal.WriteSixel(pos, sixel.CreateDebugCopy());
+#else
             _terminal.WriteSixel(pos, sixel);
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -504,7 +524,7 @@ namespace Avalonia.Terminal.Rendering
             {
                 while (!_disposed)
                 {
-                    await System.Threading.Tasks.Task.Delay(1000);
+                    await System.Threading.Tasks.Task.Delay(500);
 
                     byte[]? frame = Volatile.Read(ref _cleanFrame);
                     byte[]? oldPalette = Volatile.Read(ref _cachedPalette);
@@ -514,8 +534,7 @@ namespace Avalonia.Terminal.Rendering
                     int height = _previousHeight;
                     if (frame.Length < width * height * 4) continue;
 
-                    var quantizer = new JeremyAnsel.ColorQuant.WuColorQuantizer();
-                    byte[] newPalette = quantizer.Quantize(frame, 256).Palette;
+                    var (newPalette, _) = Sixel.QuantizeForPalette(frame);
 
                     // Only flag a refresh if enough palette entries changed
                     if (oldPalette != null && PaletteDiffCount(oldPalette, newPalette) < 20)
@@ -584,5 +603,6 @@ namespace Avalonia.Terminal.Rendering
             _previousFrame = null; // Force full redraw on resize
             _terminal.ClearScreen();
         }
+
     }
 }

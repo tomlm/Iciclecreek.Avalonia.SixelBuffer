@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"DynamicResource\\\\|StaticResource\" /s/github/AvaloniaTerminalBuffer/src/ControlCatalog/Pages/*.axaml.cs)",
+      "Bash(find:*)",
+      "Bash(dotnet list:*)",
+      "Bash(dotnet run:*)",
+      "Bash(ls src/*.sln)",
+      "Bash(ls *.sln)",
+      "Bash(ls src/**/*.csproj)",
+      "Bash(ls -d /s/packages/nuget/avalonia*)",
+      "Bash(unzip -l avalonia.themes.fluent.12.0.1.nupkg)",
+      "Bash(unzip -q avalonia.themes.fluent.12.0.1.nupkg \"lib/net10.0/Avalonia.Themes.Fluent.dll\" -d /tmp_extract)",
+      "Read(//tmp_extract/lib/net10.0/**)"
+    ]
+  }
+}
