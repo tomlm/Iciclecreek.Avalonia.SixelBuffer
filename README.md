@@ -1,3 +1,6 @@
+<img width="1199" height="734" alt="Avalonia Terminal" src="https://github.com/user-attachments/assets/61c5caa8-846b-4f4d-8607-005c58750baa" />
+
+
 # AvaloniaTerminalBuffer
 
 Render Avalonia applications directly in your terminal using [Sixel](https://en.wikipedia.org/wiki/Sixel) graphics. This library provides a custom windowing and rendering subsystem that converts Avalonia's Skia output into Sixel image sequences, enabling full GUI applications to run inside a terminal emulator.
