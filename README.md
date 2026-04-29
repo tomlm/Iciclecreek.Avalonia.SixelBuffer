@@ -1,25 +1,26 @@
 <img width="1199" height="734" alt="Avalonia Terminal" src="https://github.com/user-attachments/assets/61c5caa8-846b-4f4d-8607-005c58750baa" />
 
 
-# AvaloniaTerminalBuffer
+# Iciclecreek.Avalonia.SixelBuffer
 
-Render Avalonia applications directly in your terminal using [Sixel](https://en.wikipedia.org/wiki/Sixel) graphics. This library provides a custom windowing and rendering subsystem that converts Avalonia's Skia output into Sixel image sequences, enabling full GUI applications to run inside a terminal emulator.
+Render Avalonia applications directly in your terminal using [Sixel](https://en.wikipedia.org/wiki/Sixel) graphics. This library provides a custom windowing and rendering subsystem that converts Avalonia's 
+Skia output into Sixel image sequences, enabling full GUI applications to run inside a terminal emulator that supports Sixel graphics.
 
 ## Overview
 
-AvaloniaTerminalBuffer replaces Avalonia's native windowing platform with a terminal-based implementation:
+Iciclecreek.Avalonia.SixelBuffer replaces Avalonia's native windowing platform with a terminal-based implementation:
 
 - **Sixel rendering** -- Avalonia controls are rendered via Skia, quantized to a 256-color palette, and output as Sixel escape sequences.
 - **Input handling** -- Keyboard and mouse input are read from stdin using VT/ANSI escape sequence parsing (including SGR extended mouse tracking).
 - **Frame diffing** -- Only changed regions are re-rendered, with dirty-rect tracking and SIMD-optimized sixel band construction for performance.
 - **Software cursor** -- A composited software cursor is drawn into the frame since hardware cursors aren't available in terminal mode.
 
-Requires a Sixel-capable terminal emulator such as WezTerm, iTerm2, mlterm, foot, or contour.
+Requires a Sixel-capable terminal emulator such as Windows Terminal, WezTerm, iTerm2, etc. See https://www.arewesixelyet.com/ for a list of compatible terminals.
 
 ## Install
 
 ```
-dotnet add package AvaloniaTerminalBuffer
+dotnet add package Iciclecreek.Avalonia.SixelBuffer 
 ```
 
 
@@ -45,15 +46,16 @@ internal static class Program
         return AppBuilder.Configure<App>()
             .UseStandardRuntimePlatformSubsystem()
             .WithInterFont()
-            .UseTerminal();
+            .UseSixelBuffer();
     }
 }
 ```
 
-
 ## Notes
-- **Terminal compatibility** -- Your terminal must support Sixel graphics. Tested with Windows Terminal, WezTerm, iTerm2, and mlterm.
+- **Terminal compatibility** -- Your terminal must support Sixel graphics. Tested with Windows Terminal, WezTerm, 
 - **Render rate** -- The default render timer runs at 10 FPS to balance responsiveness with terminal throughput.
 - **No native Menus** -- Don't use NativeMenu/NativeMenuItem as they won't work in terminal mode. Use Avalonia's Menu control instead.
 - **No native popups** -- Popups and dropdown overlays are managed within the single terminal frame rather than as separate OS windows.
-- **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.1).
+- **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.2).
+- **Mouse resolution** -- Mouse input is limited to the terminal's reporting resolution, which is the same as the character cell grid. This 
+-   means you won't get pixel-level mouse coordinates, only the cell coordinates of the terminal.

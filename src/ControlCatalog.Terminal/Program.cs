@@ -20,7 +20,7 @@ namespace ControlCatalog.Terminal
             return AppBuilder.Configure<App>()
                 .UseStandardRuntimePlatformSubsystem()
                 .WithInterFont()
-                .UseTerminal()
+                .UseSixelBuffer()
 #if DEBUG
                 .WithDeveloperTools()
 #endif

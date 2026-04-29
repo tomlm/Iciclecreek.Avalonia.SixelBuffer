@@ -11,23 +11,14 @@ namespace Iciclecreek.Avalonia.SixelBuffer
     {
         /// <summary>
         ///     Configure Avalonia to render to a terminal using Sixel graphics.
-        ///     Requires .UseSkia() to be called first.
         /// </summary>
-        public static AppBuilder UseTerminal(this AppBuilder builder)
+        public static AppBuilder UseSixelBuffer(this AppBuilder builder)
         {
             builder.UseHarfBuzz();
-            return builder
-                .UseSkia()
-                .UseHarfBuzz()
-                .UseTerminalInternal(new AnsiTerminal());
-        }
+            builder.UseSkia();
+            builder.UseHarfBuzz();
 
-        /// <summary>
-        ///     Configure Avalonia to render to a terminal using Sixel graphics
-        ///     with a custom ITerminal implementation.
-        /// </summary>
-        private static AppBuilder UseTerminalInternal(this AppBuilder builder, ITerminal terminal)
-        {
+            var terminal = new AnsiTerminal();
             Action initialize = builder.RenderingSubsystemInitializer;
 
             return builder

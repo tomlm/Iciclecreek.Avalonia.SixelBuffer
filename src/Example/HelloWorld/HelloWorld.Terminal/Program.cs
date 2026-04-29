@@ -20,7 +20,7 @@ namespace HelloWorld.Terminal
             return AppBuilder.Configure<App>()
                 .UseStandardRuntimePlatformSubsystem()
                 .WithInterFont()
-                .UseTerminal();
+                .UseSixelBuffer();
         }
     }
 }
