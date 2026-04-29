@@ -131,6 +131,10 @@ namespace AvaloniaTerminalBuffer.Platform
                 win.Content = null;
                 this.DataContext = win.DataContext;
                 this.Content = content;
+
+                // Dispose the source PresentationSource (and its LayoutManager) so it
+                // can't run stale queued arrange/measure operations for controls we moved out.
+                (_presentationSource as IDisposable)?.Dispose();
             }
 
             _presentationSource = null;
@@ -176,7 +180,11 @@ namespace AvaloniaTerminalBuffer.Platform
         public void Resize(Size clientSize, WindowResizeReason reason = WindowResizeReason.Application)
         {
             _clientSize = clientSize;
-            base.ClientSize = clientSize;
+            try
+            {
+                base.ClientSize = clientSize;
+            }
+            catch { }
         }
 
         // --- IWindowImpl methods (delegate to base ManagedWindow where applicable) ---
