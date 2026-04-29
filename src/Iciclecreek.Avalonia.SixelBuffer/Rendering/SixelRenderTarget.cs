@@ -287,7 +287,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             else if (_cachedCursorType != cursorType || _cursorBitmap == null)
             {
                 _cursorBitmap?.Dispose();
-                _cursorBitmap = SoftwareCursor.GetCursorBitmap(cursorType, cellW, cellH);
+                _cursorBitmap = TerminalCursor.GetCursorBitmap(cursorType, cellW, cellH);
                 _cachedCursorType = cursorType;
                 _cachedBitmapCursor = null;
             }
@@ -345,7 +345,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         {
             int cellW = _cellPixelWidth;
             int cellH = _cellPixelHeight;
-            int cursorCells = SoftwareCursor.CursorCellWidth;
+            int cursorCells = TerminalCursor.CursorCellWidth;
             int regionW = cellW * cursorCells;
             int px = col * cellW;
             int py = row * cellH;
@@ -372,7 +372,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         {
             int cellW = _cellPixelWidth;
             int cellH = _cellPixelHeight;
-            int cursorCells = SoftwareCursor.CursorCellWidth;
+            int cursorCells = TerminalCursor.CursorCellWidth;
             int regionW = cellW * cursorCells;
             int px = col * cellW;
             int py = row * cellH;
@@ -384,7 +384,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             if (_cachedCursorType != cursorType || _cursorBitmap == null)
             {
                 _cursorBitmap?.Dispose();
-                _cursorBitmap = SoftwareCursor.GetCursorBitmap(cursorType, cellW, cellH);
+                _cursorBitmap = TerminalCursor.GetCursorBitmap(cursorType, cellW, cellH);
                 _cachedCursorType = cursorType;
             }
 
@@ -424,7 +424,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
         private static SKBitmap ScaleBitmapCursor(BitmapCursorImpl cursor, int cellW, int cellH)
         {
-            int targetW = cellW * SoftwareCursor.CursorCellWidth;
+            int targetW = cellW * TerminalCursor.CursorCellWidth;
             int targetH = cellH;
 
             var scaled = new SKBitmap(targetW, targetH, SKColorType.Bgra8888, SKAlphaType.Premul);

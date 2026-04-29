@@ -5,7 +5,7 @@ using Avalonia.Input;
 using Avalonia.Platform;
 using SkiaSharp;
 
-namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
+namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     /// <summary>
     ///     Provides Windows-style cursor bitmaps for software cursor rendering.
@@ -14,7 +14,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
     ///     Users can override cursors by calling <see cref="RegisterCursor"/> or
     ///     <see cref="LoadCursorsFromAssets"/>.
     /// </summary>
-    public static class SoftwareCursor
+    public static class TerminalCursor
     {
         private static readonly Dictionary<StandardCursorType, SKBitmap> _overrides = new();
 
