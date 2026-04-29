@@ -63,9 +63,22 @@ namespace Iciclecreek.Avalonia.SixelBuffer
         /// </summary>
         public static int StartWithConsoleLifetime(this AppBuilder builder, string[] args)
         {
-            var lifetime = new TerminalLifetime { Args = args };
-            builder.SetupWithLifetime(lifetime);
-            return lifetime.Start(args);
+            try
+            {
+                var lifetime = new TerminalLifetime { Args = args };
+                builder.SetupWithLifetime(lifetime);
+                return lifetime.Start(args);
+            }
+            catch (NotSupportedException ex)
+            {
+                // Restore the console so the error message is visible
+                var terminal = AvaloniaLocator.Current.GetService<ITerminal>();
+                if (terminal is IDisposable disposable)
+                    disposable.Dispose();
+
+                Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
         }
     }
 }

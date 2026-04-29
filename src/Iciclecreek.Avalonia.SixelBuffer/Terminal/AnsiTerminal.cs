@@ -60,6 +60,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         {
             _output.PrepareConsole();
             EnableRawMode();
+            DetectSixelSupport();
             DetectCellSize();
 
             // Enable SGR extended mouse tracking
@@ -87,6 +88,33 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                 RestoreConsole();
             }
         }
+
+        #region Sixel support detection
+
+        private void DetectSixelSupport()
+        {
+            // Send Primary Device Attributes (DA1): CSI c
+            // Response: CSI ? <params> c  where params are semicolon-separated.
+            // Param 4 = Sixel graphics supported.
+            string response = RequestAnsiResponse(Esc.QueryPrimaryDeviceAttributes, 'c', 500);
+
+            // Parse: look for "?<params>c" — param 4 means Sixel
+            int qIdx = response.IndexOf('?');
+            if (qIdx >= 0 && response.EndsWith('c'))
+            {
+                string inner = response[(qIdx + 1)..^1];
+                var supported = inner.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                if (Array.Exists(supported, p => p == "4"))
+                    return; // Sixel is supported
+            }
+
+            throw new NotSupportedException(
+                "This terminal does not support Sixel graphics. " +
+                "Use a Sixel-capable terminal such as Windows Terminal, WezTerm, iTerm2, or foot. " +
+                "See https://www.arewesixelyet.com/ for a list of compatible terminals.");
+        }
+
+        #endregion
 
         #region Cell size detection
 

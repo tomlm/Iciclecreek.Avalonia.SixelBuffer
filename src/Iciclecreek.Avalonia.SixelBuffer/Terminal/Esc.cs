@@ -27,6 +27,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         // Terminal queries
         public const string QueryCellPixelSize = "\u001b[16t";
         public const string QueryTextAreaPixelSize = "\u001b[14t";
+        public const string QueryPrimaryDeviceAttributes = "\u001b[c";
 
         public static string SetCursorPosition(int x, int y)
         {
