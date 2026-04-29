@@ -21,6 +21,7 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
         private readonly IMouseDevice _mouseDevice;
         private IInputRoot _inputRoot;
         private bool _disposed;
+        private IStorageProvider? _storageProvider;
 
         public TerminalWindow()
         {
@@ -76,6 +77,24 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
         internal void ClearCursorDirty() => CursorDirty = false;
 
         internal void InvalidateRender() => Paint?.Invoke(new Rect(ClientSize));
+
+        //EnsureWindowsPanel();
+
+        //// ManagedWindow.Show() requires a WindowsPanel somewhere in the main window's
+        //// visual tree. Auto-inject one (as the main window's content wrapper) if absent.
+        //private void EnsureWindowsPanel()
+        //{
+        //    var lifetime = Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+        //    var mainWindow = lifetime?.MainWindow;
+        //    if (mainWindow == null) return;
+
+        //    if (mainWindow.FindDescendantOfType<WindowsPanel>(true) != null) return;
+
+        //    // WindowsPanel is itself a ContentControl — wrap the existing content inside it
+        //    // so the panel acts as a full-size overlay host above the app's normal UI.
+        //    var panel = new WindowsPanel { Content = mainWindow.Content };
+        //    mainWindow.Content = panel;
+        //}
 
         public void SetCursor(ICursorImpl cursor)
         {
@@ -150,6 +169,17 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
             if (featureType == typeof(IScreenImpl))
             {
                 return new TerminalScreen();
+            }
+
+            if (featureType == typeof(IStorageProvider))
+            {
+                if (_storageProvider == null && _inputRoot is TopLevel topLevel)
+                {
+                    var type = Type.GetType("Avalonia.Platform.Storage.FileIO.BclStorageProvider, Avalonia.Base");
+                    if (type != null)
+                        _storageProvider = (IStorageProvider)Activator.CreateInstance(type, topLevel)!;
+                }
+                return _storageProvider;
             }
 
             //if (featureType == typeof(ILauncher))

@@ -11,7 +11,13 @@
       "Bash(ls -d /s/packages/nuget/avalonia*)",
       "Bash(unzip -l avalonia.themes.fluent.12.0.1.nupkg)",
       "Bash(unzip -q avalonia.themes.fluent.12.0.1.nupkg \"lib/net10.0/Avalonia.Themes.Fluent.dll\" -d /tmp_extract)",
-      "Read(//tmp_extract/lib/net10.0/**)"
+      "Read(//tmp_extract/lib/net10.0/**)",
+      "Bash(grep TopLevel\\\\|IInputRoot:*)",
+      "Bash(grep -A 20 \"class Window\\\\|class TopLevel\" /s/packages/nuget/avalonia/12.0.1/lib/net8.0/*.xml)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Read(//s//**)",
+      "Read(//s/github/avalonia/**)"
     ]
   }
 }

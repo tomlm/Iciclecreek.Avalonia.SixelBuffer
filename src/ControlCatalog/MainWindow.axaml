@@ -5,6 +5,7 @@
         xmlns:local="using:ControlCatalog"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:ControlCatalog.ViewModels;assembly=ControlCatalog"
+        xmlns:wm="using:Iciclecreek.Avalonia.WindowManager"
         xmlns:v="using:ControlCatalog.Views"
         Background="Transparent"
         x:Class="ControlCatalog.MainWindow" WindowState="{Binding WindowState, Mode=TwoWay}"
@@ -17,5 +18,6 @@
   </Window.DataTemplates>
   <Panel>
     <local:MainView />
+    <wm:WindowsPanel />
   </Panel>
 </Window>

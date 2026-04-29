@@ -6,13 +6,22 @@ using Avalonia.Input.Platform;
 using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Threading;
-using Iciclecreek.Avalonia.WindowManager;
+using AvaloniaTerminalBuffer.Platform;
 
 namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
 {
     internal class TerminalPlatform : IWindowingPlatform
     {
-        public IWindowImpl CreateWindow() => new TerminalWindow();
+        private IWindowImpl _mainWindow;
+
+        public IWindowImpl CreateWindow()
+        {
+            if (_mainWindow != null)
+                return new TerminalManagedWindow(_mainWindow);
+            else
+                _mainWindow = new TerminalWindow();
+            return _mainWindow;
+        }
 
         public IWindowImpl CreateEmbeddableWindow()
             => throw new NotSupportedException("Create Embeddable Window not supported in terminal mode.");
