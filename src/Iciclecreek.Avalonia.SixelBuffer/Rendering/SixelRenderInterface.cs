@@ -7,7 +7,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Platform;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
+namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     internal class SixelRenderInterface : IPlatformRenderInterface
     {

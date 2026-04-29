@@ -2,9 +2,9 @@ using System;
 using Avalonia;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Rendering;
+using Iciclecreek.Avalonia.SixelBuffer.Rendering;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Terminal
+namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 {
     public interface ITerminal : IDisposable
     {

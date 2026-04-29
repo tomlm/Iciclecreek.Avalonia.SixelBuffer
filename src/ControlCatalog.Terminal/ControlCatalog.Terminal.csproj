@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ControlCatalog\ControlCatalog.csproj" />
+    <ProjectReference Include="..\Iciclecreek.Avalonia.SixelBuffer\Iciclecreek.Avalonia.SixelBuffer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

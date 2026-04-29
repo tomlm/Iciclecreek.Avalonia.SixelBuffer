@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Iciclecreek.Avalonia.TerminalFrameBuffer\Iciclecreek.Avalonia.TerminalFrameBuffer.csproj" />
+    <ProjectReference Include="..\..\..\Iciclecreek.Avalonia.SixelBuffer\Iciclecreek.Avalonia.SixelBuffer.csproj" />
     <ProjectReference Include="..\HelloWorld\HelloWorld.csproj" />
   </ItemGroup>
 

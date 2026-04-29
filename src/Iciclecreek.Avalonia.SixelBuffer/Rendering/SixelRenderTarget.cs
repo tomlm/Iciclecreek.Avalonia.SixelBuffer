@@ -8,14 +8,14 @@ using System.Threading;
 using Avalonia.Controls;
 using Avalonia.Platform;
 using Avalonia.Input;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Platform;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
+using Iciclecreek.Avalonia.SixelBuffer.Platform;
+using Iciclecreek.Avalonia.SixelBuffer.Terminal;
 using SkiaSharp;
 using Avalonia.Threading;
 using Avalonia;
 using System.Threading.Tasks;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
+namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     internal class SixelRenderTarget : IRenderTarget
     {

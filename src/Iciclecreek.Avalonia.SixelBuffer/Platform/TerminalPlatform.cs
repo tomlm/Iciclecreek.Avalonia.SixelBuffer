@@ -8,7 +8,7 @@ using Avalonia.Rendering;
 using Avalonia.Threading;
 using AvaloniaTerminalBuffer.Platform;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
+namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     internal class TerminalPlatform : IWindowingPlatform
     {

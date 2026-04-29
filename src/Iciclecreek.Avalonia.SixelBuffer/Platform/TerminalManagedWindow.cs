@@ -42,7 +42,7 @@ namespace AvaloniaTerminalBuffer.Platform
             // Terminal mouse resolution is one character cell. Set ResizeThickness
             // to one full cell so resize edges are reliably clickable, without
             // affecting the visual border.
-            var terminal = AvaloniaLocator.Current.GetRequiredService<Iciclecreek.Avalonia.TerminalFramebuffer.Terminal.ITerminal>();
+            var terminal = AvaloniaLocator.Current.GetRequiredService<Iciclecreek.Avalonia.SixelBuffer.Terminal.ITerminal>();
             this.ResizeThickness = new Thickness(
                 terminal.CellPixelWidth, terminal.CellPixelHeight,
                 terminal.CellPixelWidth, terminal.CellPixelHeight);
@@ -170,7 +170,7 @@ namespace AvaloniaTerminalBuffer.Platform
         public object? TryGetFeature(Type featureType)
         {
             if (featureType == typeof(IScreenImpl))
-                return new Iciclecreek.Avalonia.TerminalFramebuffer.Platform.TerminalScreen();
+                return new Iciclecreek.Avalonia.SixelBuffer.Platform.TerminalScreen();
             Debug.WriteLine($"Missing Feature: {featureType.Name}");
             return null;
         }

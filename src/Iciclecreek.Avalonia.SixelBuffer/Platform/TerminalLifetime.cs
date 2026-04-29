@@ -4,9 +4,9 @@ using System.Threading;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
+using Iciclecreek.Avalonia.SixelBuffer.Terminal;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
+namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     public class TerminalLifetime : IClassicDesktopStyleApplicationLifetime, IDisposable
     {

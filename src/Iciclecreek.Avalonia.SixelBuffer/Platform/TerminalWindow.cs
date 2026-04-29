@@ -10,9 +10,9 @@ using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Platform.Surfaces;
 using Avalonia.Rendering.Composition;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
+using Iciclecreek.Avalonia.SixelBuffer.Terminal;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
+namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     public class TerminalWindow : IWindowImpl, IPlatformRenderSurface
     {

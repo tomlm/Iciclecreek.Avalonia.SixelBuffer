@@ -7,7 +7,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using SkiaSharp;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
+namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     internal sealed class CursorFactory : ICursorFactory
     {

@@ -2,9 +2,9 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.Text;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Rendering;
+using Iciclecreek.Avalonia.SixelBuffer.Rendering;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Terminal
+namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 {
     /// <summary>
     ///     Buffered ANSI terminal output. Only supports Sixel rendering (no character-cell output).

@@ -6,11 +6,11 @@ using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Rendering;
+using Iciclecreek.Avalonia.SixelBuffer.Rendering;
 using Avalonia.Threading;
 using Avalonia;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Terminal
+namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 {
     /// <summary>
     ///     Cross-platform ANSI terminal with VT escape sequence input parsing.

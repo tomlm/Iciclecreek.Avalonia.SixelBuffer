@@ -1,11 +1,11 @@
 using System;
 using Avalonia;
 using Avalonia.Platform;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Platform;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Rendering;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
+using Iciclecreek.Avalonia.SixelBuffer.Platform;
+using Iciclecreek.Avalonia.SixelBuffer.Rendering;
+using Iciclecreek.Avalonia.SixelBuffer.Terminal;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer
+namespace Iciclecreek.Avalonia.SixelBuffer
 {
     public static class TerminalAppBuilder
     {

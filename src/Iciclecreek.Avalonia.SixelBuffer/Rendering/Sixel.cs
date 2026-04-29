@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using JeremyAnsel.ColorQuant;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
+namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     /// <summary>
     ///     Represents a sixel image with palette and indexed pixel data.

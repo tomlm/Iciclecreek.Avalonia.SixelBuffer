@@ -6,8 +6,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Platform;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
+using Iciclecreek.Avalonia.SixelBuffer.Platform;
+using Iciclecreek.Avalonia.SixelBuffer.Terminal;
 
 namespace ControlCatalog.Pages.Events
 {

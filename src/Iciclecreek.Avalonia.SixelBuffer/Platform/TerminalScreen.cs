@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Platform;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Platform
+namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     internal class TerminalScreen : IScreenImpl
     {

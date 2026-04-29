@@ -1,4 +1,4 @@
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Terminal
+namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 {
     public static class Esc
     {

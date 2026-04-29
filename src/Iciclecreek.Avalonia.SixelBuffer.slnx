@@ -7,5 +7,5 @@
   <Project Path="ControlCatalog.Desktop/ControlCatalog.Desktop.csproj" Id="42d27f5c-a662-4d0e-926b-1dcb9b8f9460" />
   <Project Path="ControlCatalog.Terminal/ControlCatalog.Terminal.csproj" Id="13c729b9-8a2e-485f-baae-d12679039fd6" />
   <Project Path="ControlCatalog/ControlCatalog.csproj" />
-  <Project Path="Iciclecreek.Avalonia.TerminalFrameBuffer/Iciclecreek.Avalonia.TerminalFrameBuffer.csproj" />
+  <Project Path="Iciclecreek.Avalonia.SixelBuffer/Iciclecreek.Avalonia.SixelBuffer.csproj" />
 </Solution>

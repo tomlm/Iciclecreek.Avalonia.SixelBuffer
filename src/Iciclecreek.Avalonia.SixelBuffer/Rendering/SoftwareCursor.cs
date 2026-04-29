@@ -5,7 +5,7 @@ using Avalonia.Input;
 using Avalonia.Platform;
 using SkiaSharp;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
+namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     /// <summary>
     ///     Provides Windows-style cursor bitmaps for software cursor rendering.

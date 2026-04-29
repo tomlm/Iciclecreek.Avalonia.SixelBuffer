@@ -4,7 +4,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
+namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     internal class SixelDrawingContext : IDrawingContextImpl
     {

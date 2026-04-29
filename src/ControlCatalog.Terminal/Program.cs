@@ -1,6 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Dialogs;
-using Iciclecreek.Avalonia.TerminalFramebuffer;
+using Iciclecreek.Avalonia.SixelBuffer;
 
 namespace ControlCatalog.Terminal
 {

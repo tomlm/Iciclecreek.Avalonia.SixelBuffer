@@ -4,10 +4,10 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Platform;
 using Avalonia.Platform.Surfaces;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Platform;
-using Iciclecreek.Avalonia.TerminalFramebuffer.Terminal;
+using Iciclecreek.Avalonia.SixelBuffer.Platform;
+using Iciclecreek.Avalonia.SixelBuffer.Terminal;
 
-namespace Iciclecreek.Avalonia.TerminalFramebuffer.Rendering
+namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     internal sealed class SixelRenderInterfaceContext : IPlatformRenderInterfaceContext
     {

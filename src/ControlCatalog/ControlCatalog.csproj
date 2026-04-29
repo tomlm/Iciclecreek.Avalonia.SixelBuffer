@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Iciclecreek.Avalonia.TerminalFramebuffer\Iciclecreek.Avalonia.TerminalFramebuffer.csproj" />
+        <ProjectReference Include="..\Iciclecreek.Avalonia.SixelBuffer\Iciclecreek.Avalonia.SixelBuffer.csproj" />
     </ItemGroup>
 
     <ItemGroup>
