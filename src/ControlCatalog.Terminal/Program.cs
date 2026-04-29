@@ -14,9 +14,9 @@ namespace ControlCatalog.Terminal
                 .StartWithConsoleLifetime(args);
         }
 
+#pragma warning disable CA1416 // Validate platform compatibility
         public static AppBuilder BuildAvaloniaApp()
         {
-#pragma warning disable CA1416 // Validate platform compatibility
             return AppBuilder.Configure<App>()
                 .UseStandardRuntimePlatformSubsystem()
                 .WithInterFont()
@@ -25,7 +25,6 @@ namespace ControlCatalog.Terminal
                 .WithDeveloperTools()
 #endif
                 .UseManagedSystemDialogs();
-#pragma warning restore CA1416 // Validate platform compatibility
 
         }
     }

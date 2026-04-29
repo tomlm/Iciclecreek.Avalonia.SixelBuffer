@@ -12,8 +12,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer
         /// <summary>
         ///     Configure Avalonia to render to a terminal using Sixel graphics.
         /// </summary>
-        public static AppBuilder UseSixelBuffer(this AppBuilder builder)
+        /// <param name="builder">The app builder.</param>
+        /// <param name="fps">Render frames per second (default 10). Higher values give
+        /// smoother animations but use more CPU; lower values are gentler on the terminal.</param>
+        public static AppBuilder UseSixelBuffer(this AppBuilder builder, int fps = 10)
         {
+            TerminalPlatform.TargetFps = fps;
             builder.UseHarfBuzz();
             builder.UseSkia();
             builder.UseHarfBuzz();

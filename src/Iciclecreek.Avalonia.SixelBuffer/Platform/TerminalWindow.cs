@@ -182,12 +182,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
                 return _storageProvider;
             }
 
-            //if (featureType == typeof(ILauncher))
-            //{
-            //    var objHandle = Activator.CreateInstance(
-            //        "Avalonia.Base", "Avalonia.Platform.Storage.FileIO.BclLauncher");
-            //    return (ILauncher)objHandle?.Unwrap();
-            //}
+            if (featureType == typeof(ILauncher))
+            {
+                var type = Type.GetType("Avalonia.Platform.Storage.FileIO.BclLauncher, Avalonia.Base");
+                if (type != null)
+                    return Activator.CreateInstance(type, nonPublic: true)!;
+            }
 
             Debug.WriteLine($"Missing Feature: {featureType.Name}");
             return null;

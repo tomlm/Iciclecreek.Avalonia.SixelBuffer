@@ -181,6 +181,17 @@ namespace AvaloniaTerminalBuffer.Platform
             // Move content before Show so it's in our tree before any layout pass.
             AdoptContentFromSource();
 
+            // Clamp to terminal screen size so the window fits on screen.
+            var maxSize = _mainWindow.ClientSize;
+            if (this.Width > maxSize.Width || double.IsNaN(this.Width))
+                this.Width = maxSize.Width;
+            if (this.Height > maxSize.Height || double.IsNaN(this.Height))
+                this.Height = maxSize.Height;
+            if (_clientSize.Width > maxSize.Width || _clientSize.Height > maxSize.Height)
+                _clientSize = new Size(
+                    Math.Min(_clientSize.Width, maxSize.Width),
+                    Math.Min(_clientSize.Height, maxSize.Height));
+
             this.ShowActivated = activate;
             if (isDialog)
                 base.ShowDialog();
@@ -200,6 +211,12 @@ namespace AvaloniaTerminalBuffer.Platform
 
         public void Resize(Size clientSize, WindowResizeReason reason = WindowResizeReason.Application)
         {
+            // Clamp to the main terminal window size so the managed window fits on screen.
+            var maxSize = _mainWindow.ClientSize;
+            clientSize = new Size(
+                Math.Min(clientSize.Width, maxSize.Width),
+                Math.Min(clientSize.Height, maxSize.Height));
+
             _clientSize = clientSize;
             try
             {

@@ -12,6 +12,8 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     internal class TerminalPlatform : IWindowingPlatform
     {
+        internal static int TargetFps { get; set; } = 10;
+
         private IWindowImpl _mainWindow;
 
         public IWindowImpl CreateWindow()
@@ -39,9 +41,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 
         public void Initialize()
         {
-            // 10fps is sufficient for terminal rendering and prevents
-            // animation frames from starving input processing on the UI thread
-            var renderTimer = new UiThreadRenderTimer(10);
+            var renderTimer = new UiThreadRenderTimer(TargetFps);
             Dispatcher.InitializeUIThreadDispatcher(new ManagedDispatcherImpl(null));
             AvaloniaLocator.CurrentMutable.BindToSelf(this)
                 .Bind<IWindowingPlatform>().ToConstant(this)
