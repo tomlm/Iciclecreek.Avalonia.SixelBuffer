@@ -1,30 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <OutputType>Library</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <Nullable>enable</Nullable>
-        <NoWarn>$(NoWarn);CA1031;CS8600;CS8601;CS8602;CS8603;CS8604;CS8612;CS8618;CS8625;CS8767</NoWarn>
-        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);CA1031;CS8600;CS8601;CS8602;CS8603;CS8604;CS8612;CS8618;CS8625;CS8767</NoWarn>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\Iciclecreek.Avalonia.SixelBuffer\Iciclecreek.Avalonia.SixelBuffer.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Iciclecreek.Avalonia.SixelBuffer\Iciclecreek.Avalonia.SixelBuffer.csproj" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <AvaloniaResource Include="Assets\**\*" />
-        <EmbeddedResource Include="Assets\Fonts\*.ttf" />
-        <EmbeddedResource Include="Pages\teapot.bin" Condition="Exists('Pages\teapot.bin')" />
-    </ItemGroup>
-    
-    <ItemGroup>
-        <PackageReference Include="Avalonia" Version="12.0.2" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
-        <PackageReference Include="Avalonia.Themes.Simple" Version="12.0.2" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.2" />
-        <PackageReference Include="Avalonia.Controls.ColorPicker" Version="12.0.2" />
-        <PackageReference Include="System.Reactive" Version="6.1.0" />
-    </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**\*" />
+    <EmbeddedResource Include="Assets\Fonts\*.ttf" />
+    <EmbeddedResource Include="Pages\teapot.bin" Condition="Exists('Pages\teapot.bin')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Themes.Simple" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" Version="12.0.2" />
+    <PackageReference Include="System.Reactive" Version="6.1.0" />
+  </ItemGroup>
 
 </Project>
