@@ -1,5 +1,8 @@
 <img width="1199" height="734" alt="Avalonia Terminal" src="https://github.com/user-attachments/assets/61c5caa8-846b-4f4d-8607-005c58750baa" />
 
+[![Build](https://github.com/tomlm/AvaloniaTerminalBuffer/actions/workflows/BuildAndRunTests.yml/badge.svg)](https://github.com/tomlm/AvaloniaTerminalBuffer/actions/workflows/BuildAndRunTests.yml)
+[![NuGet](https://img.shields.io/nuget/v/Iciclecreek.Avalonia.SixelBuffer.svg)](https://www.nuget.org/packages/Iciclecreek.Avalonia.SixelBuffer)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # Iciclecreek.Avalonia.SixelBuffer
 
