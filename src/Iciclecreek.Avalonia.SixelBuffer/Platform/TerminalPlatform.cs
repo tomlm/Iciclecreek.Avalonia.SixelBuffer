@@ -14,7 +14,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
     {
         internal static int TargetFps { get; set; } = 10;
 
-        private IWindowImpl _mainWindow;
+        private IWindowImpl? _mainWindow;
 
         public IWindowImpl CreateWindow()
         {
@@ -62,9 +62,9 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 
     internal class DummyIconLoader : IPlatformIconLoader
     {
-        public IWindowIconImpl LoadIcon(string fileName) => null;
-        public IWindowIconImpl LoadIcon(System.IO.Stream stream) => null;
-        public IWindowIconImpl LoadIcon(IBitmapImpl bitmap) => null;
+        public IWindowIconImpl LoadIcon(string fileName) => null!;
+        public IWindowIconImpl LoadIcon(System.IO.Stream stream) => null!;
+        public IWindowIconImpl LoadIcon(IBitmapImpl bitmap) => null!;
     }
 
     internal class PlatformSettings : DefaultPlatformSettings { }

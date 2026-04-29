@@ -1,7 +1,4 @@
 ﻿using Avalonia;
-using System;
-using Avalonia;
-using Avalonia.Dialogs;
 using Iciclecreek.Avalonia.SixelBuffer;
 
 namespace HelloWorld.Terminal

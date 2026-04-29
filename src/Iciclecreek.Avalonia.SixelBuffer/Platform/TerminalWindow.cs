@@ -18,15 +18,15 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
     {
         public readonly ITerminal Terminal;
         private readonly IKeyboardDevice _keyboardDevice;
-        private readonly IMouseDevice _mouseDevice;
-        private IInputRoot _inputRoot;
+        private readonly IMouseDevice _mouseDevice = null!;
+        private IInputRoot _inputRoot = null!;
         private bool _disposed;
         private IStorageProvider? _storageProvider;
 
         public TerminalWindow()
         {
             _keyboardDevice = AvaloniaLocator.Current.GetRequiredService<IKeyboardDevice>();
-            _mouseDevice = AvaloniaLocator.Current.GetService<IMouseDevice>();
+            _mouseDevice = AvaloniaLocator.Current.GetService<IMouseDevice>()!;
             Terminal = AvaloniaLocator.Current.GetRequiredService<ITerminal>();
 
             Terminal.Resized += OnTerminalResized;
@@ -53,14 +53,14 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         public IPlatformRenderSurface[] Surfaces => [this];
         bool IPlatformRenderSurface.IsReady => true;
 
-        public Action<RawInputEventArgs> Input { get; set; }
-        public Action<Rect> Paint { get; set; }
-        public Action<Size, WindowResizeReason> Resized { get; set; }
-        public Action<double> ScalingChanged { get; set; }
-        public Action<WindowTransparencyLevel> TransparencyLevelChanged { get; set; }
+        public Action<RawInputEventArgs>? Input { get; set; }
+        public Action<Rect>? Paint { get; set; }
+        public Action<Size, WindowResizeReason>? Resized { get; set; }
+        public Action<double>? ScalingChanged { get; set; }
+        public Action<WindowTransparencyLevel>? TransparencyLevelChanged { get; set; }
         public Compositor Compositor { get; } = new(null);
-        public Action Closed { get; set; }
-        public Action LostFocus { get; set; }
+        public Action? Closed { get; set; }
+        public Action? LostFocus { get; set; }
         public WindowTransparencyLevel TransparencyLevel => WindowTransparencyLevel.None;
         public AcrylicPlatformCompensationLevels AcrylicCompensationLevels => new(1, 1, 1);
 
@@ -96,7 +96,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         //    mainWindow.Content = panel;
         //}
 
-        public void SetCursor(ICursorImpl cursor)
+        public void SetCursor(ICursorImpl? cursor)
         {
             if (cursor is BitmapCursorImpl bitmapCursor)
             {
@@ -111,7 +111,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 
             CursorDirty = true;
         }
-        public IPopupImpl CreatePopup() => null;
+        public IPopupImpl? CreatePopup() => null;
         public void SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) { }
         public void SetFrameThemeVariant(PlatformThemeVariant themeVariant) { }
 
@@ -125,17 +125,17 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         public void SetTopmost(bool value) { }
         public double DesktopScaling => 1d;
         public PixelPoint Position { get; }
-        public Action<PixelPoint> PositionChanged { get; set; }
-        public Action Deactivated { get; set; }
-        public Action Activated { get; set; }
+        public Action<PixelPoint>? PositionChanged { get; set; }
+        public Action? Deactivated { get; set; }
+        public Action? Activated { get; set; }
         public IPlatformHandle Handle { get; }
         public Size MaxAutoSizeHint { get; }
 
-        public void SetTitle(string title) => Terminal.SetTitle(title);
-        public void SetParent(IWindowImpl parent) { }
+        public void SetTitle(string? title) => Terminal.SetTitle(title ?? string.Empty);
+        public void SetParent(IWindowImpl? parent) { }
         public void SetEnabled(bool enable) { }
         public void SetWindowDecorations(WindowDecorations decorations) { }
-        public void SetIcon(IWindowIconImpl icon) { }
+        public void SetIcon(IWindowIconImpl? icon) { }
         public void ShowTaskbarIcon(bool value) { }
         public void CanResize(bool value) { }
         public void BeginMoveDrag(PointerPressedEventArgs e) { }
@@ -154,17 +154,17 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 
         public WindowState WindowState { get; set; }
         public bool WindowStateGetterIsUsable => false;
-        public Action<WindowState> WindowStateChanged { get; set; }
+        public Action<WindowState>? WindowStateChanged { get; set; }
         public PlatformRequestedDrawnDecoration RequestedDrawnDecorations => default;
-        public Action GotInputWhenDisabled { get; set; }
-        public Func<WindowCloseReason, bool> Closing { get; set; }
+        public Action? GotInputWhenDisabled { get; set; }
+        public Func<WindowCloseReason, bool>? Closing { get; set; }
         public bool IsClientAreaExtendedToDecorations { get; }
-        public Action<bool> ExtendClientAreaToDecorationsChanged { get; set; }
+        public Action<bool>? ExtendClientAreaToDecorationsChanged { get; set; }
         public bool NeedsManagedDecorations { get; }
         public Thickness ExtendedMargins { get; }
         public Thickness OffScreenMargin { get; }
 
-        public object TryGetFeature(Type featureType)
+        public object? TryGetFeature(Type featureType)
         {
             if (featureType == typeof(IScreenImpl))
             {
@@ -227,7 +227,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
             ulong timestamp, bool tryAsTextInput)
         {
             // KeySymbol is required for access key handling (Alt+F → "f")
-            string keySymbol = keyChar > 0 && !char.IsControl(keyChar) ? keyChar.ToString() : null;
+            string? keySymbol = keyChar > 0 && !char.IsControl(keyChar) ? keyChar.ToString() : null;
 
             if (down)
             {

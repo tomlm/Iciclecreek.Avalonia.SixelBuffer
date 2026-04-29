@@ -18,7 +18,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             _fallback = fallback ?? throw new ArgumentNullException(nameof(fallback));
         }
 
-        public IPlatformRenderInterfaceContext CreateBackendContext(IPlatformGraphicsContext graphicsApiContext)
+        public IPlatformRenderInterfaceContext CreateBackendContext(IPlatformGraphicsContext? graphicsApiContext)
             => new SixelRenderInterfaceContext(_fallback);
 
         public IGeometryImpl CreateEllipseGeometry(Rect rect) => _fallback.CreateEllipseGeometry(rect);

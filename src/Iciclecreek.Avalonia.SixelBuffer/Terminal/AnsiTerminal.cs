@@ -43,10 +43,10 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         public int PixelWidth => _output.PixelWidth;
         public int PixelHeight => _output.PixelHeight;
 
-        public event Action Resized;
-        public event Action<Key, char, RawInputModifiers, bool, ulong, bool> KeyEvent;
-        public event Action<RawPointerEventType, Point, Vector?, RawInputModifiers> MouseEvent;
-        public event Action<bool> FocusEvent;
+        public event Action? Resized;
+        public event Action<Key, char, RawInputModifiers, bool, ulong, bool>? KeyEvent;
+        public event Action<RawPointerEventType, Point, Vector?, RawInputModifiers>? MouseEvent;
+        public event Action<bool>? FocusEvent;
 
         public void SetTitle(string title) => _output.SetTitle(title);
         public void SetCaretPosition(CellPosition position) => _output.SetCaretPosition(position);

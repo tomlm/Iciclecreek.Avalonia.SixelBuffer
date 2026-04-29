@@ -10,12 +10,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
     {
         public int ScreenCount => 0;
         public IReadOnlyList<Screen> AllScreens => [];
-        public Action Changed { get; set; }
+        public Action? Changed { get; set; }
 
         public Task<bool> RequestScreenDetails() => Task.FromResult(true);
-        public Screen ScreenFromPoint(PixelPoint point) => null;
-        public Screen ScreenFromRect(PixelRect rect) => null;
-        public Screen ScreenFromTopLevel(ITopLevelImpl topLevel) => null;
-        public Screen ScreenFromWindow(IWindowBaseImpl window) => null;
+        public Screen? ScreenFromPoint(PixelPoint point) => null;
+        public Screen? ScreenFromRect(PixelRect rect) => null;
+        public Screen? ScreenFromTopLevel(ITopLevelImpl topLevel) => null;
+        public Screen? ScreenFromWindow(IWindowBaseImpl window) => null;
     }
 }

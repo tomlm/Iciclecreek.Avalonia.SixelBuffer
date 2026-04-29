@@ -22,9 +22,9 @@ namespace AvaloniaTerminalBuffer.Platform
 {
     public class TerminalManagedWindow : ManagedWindow, IWindowImpl
     {
-        private IInputRoot _inputRoot;
+        private IInputRoot _inputRoot = null!;
         private IWindowImpl _mainWindow;
-        private IWindowImpl _parentWindow;
+        private IWindowImpl _parentWindow = null!;
         private IPresentationSource? _presentationSource;
         private Size _clientSize;
         private bool _disposing;
@@ -230,7 +230,7 @@ namespace AvaloniaTerminalBuffer.Platform
         public void SetTopmost(bool value) => Topmost = value;
         public void SetIcon(IWindowIconImpl? icon) { }
         public void SetWindowDecorations(WindowDecorations enabled) => base.WindowDecorations = enabled;
-        public void SetParent(IWindowImpl? parent) => _parentWindow = parent;
+        public void SetParent(IWindowImpl? parent) => _parentWindow = parent!;
         public void SetEnabled(bool enable) => base.IsEnabled = enable;
 
         public void SetMinMaxSize(Size minSize, Size maxSize)

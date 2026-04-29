@@ -26,7 +26,7 @@ dotnet add package Iciclecreek.Avalonia.SixelBuffer
 
 ## Configuring Program.cs
 
-Replace the standard desktop lifetime with the terminal lifetime:
+Create a new target console application and replace the contents of `Program.cs` with the following code to initialize Avalonia with the SixelBuffer platform:
 
 ```csharp
 using Avalonia;
@@ -53,7 +53,7 @@ internal static class Program
 
 ## Notes
 - **Terminal compatibility** -- Your terminal must support Sixel graphics. Tested with Windows Terminal, WezTerm, 
-- **Render rate** -- The default render timer runs at 10 FPS to balance responsiveness with terminal throughput.
+- **Render rate** -- The default render timer runs at 10 FPS to balance responsiveness with terminal throughput. NOTE: If you set too high input will be starved.
 - **No native Menus** -- Don't use NativeMenu/NativeMenuItem as they won't work in terminal mode. Use Avalonia's Menu control instead.
 - **No native popups** -- Popups and dropdown overlays are managed within the single terminal frame rather than as separate OS windows.
 - **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.2).

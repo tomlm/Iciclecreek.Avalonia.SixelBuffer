@@ -105,7 +105,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             _disposed = true;
             _renderQueue.CompleteAdding();
             _consoleWindow.Resized -= OnResized;
-            _innerTarget.Dispose();
+            _innerTarget?.Dispose();
         }
 
         internal void RenderToDevice()
@@ -433,7 +433,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             canvas.DrawBitmap(cursor.Bitmap,
                 new SKRect(0, 0, cursor.Bitmap.Width, cursor.Bitmap.Height),
                 new SKRect(0, 0, targetW, targetH),
-                new SKPaint { FilterQuality = SKFilterQuality.High });
+                new SKPaint());
             return scaled;
         }
 

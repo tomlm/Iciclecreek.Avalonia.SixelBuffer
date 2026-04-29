@@ -52,7 +52,7 @@
                     </TextBlock>
                     <TextBox Height="60"
                              Grid.Row="1"
-                             Watermark="Type here to see keyboard events"
+                             PlaceholderText="Type here to see keyboard events"
                              AcceptsReturn="True"
                              KeyDown="OnKeyDown"
                              KeyUp="OnKeyUp" />
@@ -113,7 +113,7 @@
                         Raw Keyboard Events
                     </TextBlock>
                     <TextBox Height="60"
-                             Watermark="Type here to see raw keyboard events"
+                             PlaceholderText="Type here to see raw keyboard events"
                              AcceptsReturn="True"
                              GotFocus="OnRawKeyboardGotFocus"
                              LostFocus="OnRawKeyboardLostFocus" />

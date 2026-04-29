@@ -41,7 +41,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
         public PixelSize? MaxOffscreenRenderTargetPixelSize => _fallbackContext.MaxOffscreenRenderTargetPixelSize;
 
-        public object TryGetFeature(Type featureType) => _fallbackContext.TryGetFeature(featureType);
+        public object? TryGetFeature(Type featureType) => _fallbackContext.TryGetFeature(featureType);
         public bool IsLost => _fallbackContext.IsLost;
         public IReadOnlyDictionary<Type, object> PublicFeatures => _fallbackContext.PublicFeatures;
         public void Dispose() => _fallbackContext.Dispose();

@@ -10,20 +10,20 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     public class TerminalLifetime : IClassicDesktopStyleApplicationLifetime, IDisposable
     {
-        private CancellationTokenSource _cts = new();
+        private CancellationTokenSource? _cts = new();
         private bool _disposed;
         private int _exitCode;
         private bool _isShuttingDown;
 
-        public string[] Args { get; set; }
+        public string[] Args { get; set; } = Array.Empty<string>();
 
-        public event EventHandler<ControlledApplicationLifetimeStartupEventArgs> Startup;
-        public event EventHandler<ControlledApplicationLifetimeExitEventArgs> Exit;
-        public event EventHandler<ShutdownRequestedEventArgs> ShutdownRequested;
+        public event EventHandler<ControlledApplicationLifetimeStartupEventArgs>? Startup;
+        public event EventHandler<ControlledApplicationLifetimeExitEventArgs>? Exit;
+        public event EventHandler<ShutdownRequestedEventArgs>? ShutdownRequested;
 
         public ShutdownMode ShutdownMode { get; set; } = ShutdownMode.OnExplicitShutdown;
-        public Window MainWindow { get; set; }
-        public IReadOnlyList<Window> Windows => new List<Window> { MainWindow };
+        public Window? MainWindow { get; set; }
+        public IReadOnlyList<Window> Windows => new List<Window> { MainWindow! };
 
         public void Shutdown(int exitCode = 0) => DoShutdown(new ShutdownRequestedEventArgs(), true, true, exitCode);
 
@@ -32,7 +32,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         public int Start(string[] args)
         {
             Startup?.Invoke(this, new ControlledApplicationLifetimeStartupEventArgs(args));
-            MainWindow.Closed += (_, _) => TryShutdown();
+            MainWindow!.Closed += (_, _) => TryShutdown();
             MainWindow.Show();
 
             // Force a resize after show so Avalonia re-layouts at the correct terminal dimensions.
@@ -45,7 +45,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 
             try
             {
-                Dispatcher.UIThread.MainLoop(_cts.Token);
+                Dispatcher.UIThread.MainLoop(_cts!.Token);
                 Environment.ExitCode = _exitCode;
                 return _exitCode;
             }

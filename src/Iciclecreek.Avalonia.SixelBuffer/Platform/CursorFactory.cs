@@ -17,7 +17,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         {
             lock (_cursors)
             {
-                if (_cursors.TryGetValue(cursorType, out CursorImpl cursor))
+                if (_cursors.TryGetValue(cursorType, out CursorImpl? cursor))
                     return cursor;
                 cursor = new CursorImpl(cursorType);
                 _cursors.Add(cursorType, cursor);

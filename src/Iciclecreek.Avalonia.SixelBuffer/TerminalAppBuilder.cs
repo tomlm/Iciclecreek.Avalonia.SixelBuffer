@@ -23,7 +23,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer
             builder.UseHarfBuzz();
 
             var terminal = new AnsiTerminal();
-            Action initialize = builder.RenderingSubsystemInitializer;
+            Action? initialize = builder.RenderingSubsystemInitializer;
 
             return builder
                 .UseWindowingSubsystem(() =>
@@ -51,7 +51,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer
                     if (initialize != null) initialize();
 
                     var fallback = AvaloniaLocator.Current.GetService<IPlatformRenderInterface>();
-                    var sixelRenderInterface = new SixelRenderInterface(fallback);
+                    var sixelRenderInterface = new SixelRenderInterface(fallback!);
 
                     AvaloniaLocator.CurrentMutable
                         .Bind<IPlatformRenderInterface>().ToConstant(sixelRenderInterface);

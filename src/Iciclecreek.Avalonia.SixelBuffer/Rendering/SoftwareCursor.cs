@@ -75,7 +75,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                 canvas.DrawBitmap(custom,
                     new SKRect(0, 0, custom.Width, custom.Height),
                     new SKRect(0, 0, w, h),
-                    new SKPaint { FilterQuality = SKFilterQuality.High });
+                    new SKPaint());
                 return scaled;
             }
 
@@ -540,16 +540,18 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             bubble.AddCircle(bx, by, br);
             DrawOutlinedPath(canvas, bubble, stroke);
 
-            using var font = new SKPaint
+            using var textFont = new SKFont
+            {
+                Size = 7 * s,
+                Typeface = SKTypeface.Default,
+                Embolden = true
+            };
+            using var textPaint = new SKPaint
             {
                 Color = SKColors.Black,
-                TextSize = 7 * s,
-                IsAntialias = true,
-                Typeface = SKTypeface.Default,
-                TextAlign = SKTextAlign.Center,
-                FakeBoldText = true
+                IsAntialias = true
             };
-            canvas.DrawText("?", bx, by + 2.5f * s, font);
+            canvas.DrawText("?", bx, by + 2.5f * s, SKTextAlign.Center, textFont, textPaint);
         }
 
         private static void DrawDragCopy(SKCanvas canvas, float s, float stroke)

@@ -4,7 +4,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <Nullable>enable</Nullable>
-        <NoWarn>$(NoWarn);CA1031</NoWarn>
+        <NoWarn>$(NoWarn);CA1031;CS8600;CS8601;CS8602;CS8603;CS8604;CS8612;CS8618;CS8625;CS8767</NoWarn>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     </PropertyGroup>
 

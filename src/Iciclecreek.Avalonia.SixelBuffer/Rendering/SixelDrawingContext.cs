@@ -9,9 +9,9 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
     internal class SixelDrawingContext : IDrawingContextImpl
     {
         internal readonly IDrawingContextImpl Inner;
-        private readonly SixelRenderTarget _renderTarget;
+        private readonly SixelRenderTarget? _renderTarget;
 
-        public SixelDrawingContext(IDrawingContextImpl inner, SixelRenderTarget renderTarget = null)
+        public SixelDrawingContext(IDrawingContextImpl inner, SixelRenderTarget? renderTarget = null)
         {
             Inner = inner;
             _renderTarget = renderTarget;
@@ -26,21 +26,21 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         public void Clear(Color color) => Inner.Clear(color);
         public void DrawBitmap(IBitmapImpl source, double opacity, Rect sourceRect, Rect destRect) => Inner.DrawBitmap(source, opacity, sourceRect, destRect);
         public void DrawBitmap(IBitmapImpl source, IBrush opacityMask, Rect opacityMaskRect, Rect destRect) => Inner.DrawBitmap(source, opacityMask, opacityMaskRect, destRect);
-        public void DrawEllipse(IBrush brush, IPen pen, Rect rect) => Inner.DrawEllipse(brush, pen, rect);
-        public void DrawGlyphRun(IBrush foreground, IGlyphRunImpl glyphRun) => Inner.DrawGlyphRun(foreground, glyphRun);
-        public void DrawLine(IPen pen, Point p1, Point p2) => Inner.DrawLine(pen, p1, p2);
-        public void DrawGeometry(IBrush brush, IPen pen, IGeometryImpl geometry)
+        public void DrawEllipse(IBrush? brush, IPen? pen, Rect rect) => Inner.DrawEllipse(brush, pen, rect);
+        public void DrawGlyphRun(IBrush? foreground, IGlyphRunImpl glyphRun) => Inner.DrawGlyphRun(foreground, glyphRun);
+        public void DrawLine(IPen? pen, Point p1, Point p2) => Inner.DrawLine(pen, p1, p2);
+        public void DrawGeometry(IBrush? brush, IPen? pen, IGeometryImpl geometry)
         {
             try { Inner.DrawGeometry(brush, pen, geometry); }
             catch (InvalidOperationException) { /* Skia can fail on degenerate geometry/brush sizes */ }
         }
 
-        public void DrawRectangle(IBrush brush, IPen pen, RoundedRect rrect, BoxShadows boxShadows = default)
+        public void DrawRectangle(IBrush? brush, IPen? pen, RoundedRect rrect, BoxShadows boxShadows = default)
         {
             try { Inner.DrawRectangle(brush, pen, rrect, boxShadows); }
             catch (InvalidOperationException) { /* Skia can fail on degenerate sizes */ }
         }
-        public void DrawRegion(IBrush brush, IPen pen, IPlatformRenderInterfaceRegion region) => Inner.DrawRegion(brush, pen, region);
+        public void DrawRegion(IBrush? brush, IPen? pen, IPlatformRenderInterfaceRegion region) => Inner.DrawRegion(brush, pen, region);
 
         public IDrawingContextLayerImpl CreateLayer(PixelSize size)
             => new SixelLayerWrapper(Inner.CreateLayer(size));
@@ -61,7 +61,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         public void PopTextOptions() => Inner.PopTextOptions();
         public void PushLayer(Rect bounds) => Inner.PushLayer(bounds);
         public void PopLayer() => Inner.PopLayer();
-        public object GetFeature(Type t) => Inner.GetFeature(t);
+        public object? GetFeature(Type t) => Inner.GetFeature(t);
 
         public void Dispose()
         {

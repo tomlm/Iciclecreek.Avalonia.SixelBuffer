@@ -48,7 +48,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         }
 
         public static Sixel CreateFromBitmap(byte[] bgrx, int width, int height,
-            int cellWidth, int cellHeight, byte[] palette = null, int reservedCount = 0)
+            int cellWidth, int cellHeight, byte[]? palette = null, int reservedCount = 0)
         {
             // Only consider the visible pixels (width * height), not the full buffer
             int pixelCount = width * height;
@@ -123,10 +123,10 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
         #region Serialization
 
-        [ThreadStatic] private static byte[] _scratchRenderBuf;
-        [ThreadStatic] private static WuColorQuantizer _quantizer;
+        [ThreadStatic] private static byte[]? _scratchRenderBuf;
+        [ThreadStatic] private static WuColorQuantizer? _quantizer;
         private static readonly ConditionalWeakTable<byte[], PaletteLookup> PaletteLookups = new();
-        private byte[] _renderedBytes;
+        private byte[]? _renderedBytes;
 
         public ReadOnlySpan<byte> Render()
         {
@@ -465,7 +465,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static T[] RentOrGrow<T>(ref T[] buf, int minSize)
+        private static T[] RentOrGrow<T>(ref T[]? buf, int minSize)
         {
             if (buf == null || buf.Length < minSize)
                 buf = GC.AllocateUninitializedArray<T>(Math.Max(minSize, 4096));
