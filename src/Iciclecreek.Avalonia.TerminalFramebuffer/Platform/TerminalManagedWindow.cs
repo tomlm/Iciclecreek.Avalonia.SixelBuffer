@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Rendering;
 using Avalonia.VisualTree;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using System.Diagnostics;
 using System.Threading;
@@ -37,6 +38,14 @@ namespace AvaloniaTerminalBuffer.Platform
             base.Content = new Panel();
 
             _mainWindow = mainWindow;
+
+            // Terminal mouse resolution is one character cell. Set ResizeThickness
+            // to one full cell so resize edges are reliably clickable, without
+            // affecting the visual border.
+            var terminal = AvaloniaLocator.Current.GetRequiredService<Iciclecreek.Avalonia.TerminalFramebuffer.Terminal.ITerminal>();
+            this.ResizeThickness = new Thickness(
+                terminal.CellPixelWidth, terminal.CellPixelHeight,
+                terminal.CellPixelWidth, terminal.CellPixelHeight);
 
             // ManagedWindow events → IWindowImpl callbacks
             base.Closed += (_, _) => ((ITopLevelImpl)this).Closed?.Invoke();
