@@ -15,6 +15,7 @@ using Avalonia.Rendering;
 using Avalonia.VisualTree;
 using Avalonia.Threading;
 using System.Diagnostics;
+using System.Threading;
 
 namespace AvaloniaTerminalBuffer.Platform
 {
@@ -26,6 +27,10 @@ namespace AvaloniaTerminalBuffer.Platform
         private IPresentationSource? _presentationSource;
         private Size _clientSize;
         private bool _disposing;
+        private Point? _dragStart;
+        private WindowEdge? _resizeEdge;
+        private PixelPoint _dragStartPosition;
+        private Size _dragStartSize;
 
         public TerminalManagedWindow(IWindowImpl mainWindow)
         {
@@ -53,6 +58,13 @@ namespace AvaloniaTerminalBuffer.Platform
 
             // Propagate terminal resize → file picker window re-layout
             _mainWindow.Resized += (size, reason) => ((ITopLevelImpl)this).Resized?.Invoke(size, reason);
+
+            // Handle pointer events for BeginMoveDrag/BeginResizeDrag.
+            // Use AddHandler with handledEventsToo=true so we see events even if
+            // ManagedWindow's internal handlers mark them handled.
+            this.AddHandler(PointerMovedEvent, OnDragPointerMoved, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+            this.AddHandler(PointerReleasedEvent, OnDragPointerReleased, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+            this.AddHandler(PointerCaptureLostEvent, OnDragPointerCaptureLost, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         }
 
         // --- ITopLevelImpl properties ---
@@ -191,15 +203,9 @@ namespace AvaloniaTerminalBuffer.Platform
         public void SetTitle(string? title) => Title = title ?? string.Empty;
         public void SetTopmost(bool value) => Topmost = value;
         public void SetIcon(IWindowIconImpl? icon) { }
-        public void SetWindowDecorations(WindowDecorations enabled) { }
-        public void SetParent(IWindowImpl? parent)
-        {
-            _parentWindow = parent;
-        }
-        public void SetEnabled(bool enable)
-        {
-            base.IsEnabled = enable;
-        }
+        public void SetWindowDecorations(WindowDecorations enabled) => base.WindowDecorations = enabled;
+        public void SetParent(IWindowImpl? parent) => _parentWindow = parent;
+        public void SetEnabled(bool enable) => base.IsEnabled = enable;
 
         public void SetMinMaxSize(Size minSize, Size maxSize)
         {
@@ -211,19 +217,119 @@ namespace AvaloniaTerminalBuffer.Platform
 
         public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) { }
         public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight) { }
-        public void SetCanMinimize(bool value)
-        {
-        }
-        public void SetCanMaximize(bool value)
-        {
-        }
+        public void SetCanMinimize(bool value) => CanResize = value;
+        public void SetCanMaximize(bool value) => CanResize = value;
+
         public void BeginMoveDrag(PointerPressedEventArgs e)
         {
+            _resizeEdge = null;
+            _dragStart = e.GetPosition(this.Parent as Visual);
+            _dragStartPosition = this.Position;
+            e.Pointer.Capture(this);
+            Debug.WriteLine($"[BeginMoveDrag] start={_dragStart} pos={_dragStartPosition}");
         }
+
         public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e)
         {
+            if (!CanResize)
+                return;
+
+            _resizeEdge = edge;
+            _dragStart = e.GetPosition(this.Parent as Visual);
+            _dragStartPosition = this.Position;
+            _dragStartSize = new Size(this.Width, this.Height);
+            e.Pointer.Capture(this);
+            Debug.WriteLine($"[BeginResizeDrag] edge={edge} start={_dragStart} pos={_dragStartPosition} size={_dragStartSize}");
         }
+
+        private void OnDragPointerMoved(object? sender, PointerEventArgs e)
+        {
+            if (_dragStart == null)
+                return;
+
+            var current = e.GetPosition(this.Parent as Visual);
+            var deltaX = current.X - _dragStart.Value.X;
+            var deltaY = current.Y - _dragStart.Value.Y;
+
+            if (_resizeEdge == null)
+            {
+                var newPos = new PixelPoint(
+                    _dragStartPosition.X + (int)deltaX,
+                    _dragStartPosition.Y + (int)deltaY);
+                Debug.WriteLine($"[MoveDrag] current={current} delta=({deltaX},{deltaY}) newPos={newPos}");
+                this.Position = newPos;
+            }
+            else
+            {
+                var left = (double)_dragStartPosition.X;
+                var top = (double)_dragStartPosition.Y;
+                var width = _dragStartSize.Width;
+                var height = _dragStartSize.Height;
+
+                switch (_resizeEdge)
+                {
+                    case WindowEdge.East:
+                        width += deltaX;
+                        break;
+                    case WindowEdge.West:
+                        left += deltaX; width -= deltaX;
+                        break;
+                    case WindowEdge.South:
+                        height += deltaY;
+                        break;
+                    case WindowEdge.North:
+                        top += deltaY; height -= deltaY;
+                        break;
+                    case WindowEdge.SouthEast:
+                        width += deltaX; height += deltaY;
+                        break;
+                    case WindowEdge.SouthWest:
+                        left += deltaX; width -= deltaX; height += deltaY;
+                        break;
+                    case WindowEdge.NorthEast:
+                        width += deltaX; top += deltaY; height -= deltaY;
+                        break;
+                    case WindowEdge.NorthWest:
+                        left += deltaX; width -= deltaX; top += deltaY; height -= deltaY;
+                        break;
+                }
+
+                Debug.WriteLine($"[ResizeDrag] edge={_resizeEdge} delta=({deltaX},{deltaY}) pos=({left},{top}) size=({width},{height})");
+
+                if (width >= MinWidth && width <= MaxWidth)
+                    this.Width = width;
+                if (height >= MinHeight && height <= MaxHeight)
+                    this.Height = height;
+                this.Position = new PixelPoint((int)left, (int)top);
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnDragPointerReleased(object? sender, PointerReleasedEventArgs e)
+        {
+            if (_dragStart == null)
+                return;
+
+            Debug.WriteLine($"[DragEnd] releasing capture");
+            _dragStart = null;
+            _resizeEdge = null;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+        }
+
+        private void OnDragPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+        {
+            if (_dragStart == null)
+                return;
+
+            Debug.WriteLine($"[PointerCaptureLost] ending drag");
+            _dragStart = null;
+            _resizeEdge = null;
+        }
+
         public void ShowTaskbarIcon(bool value) { }
+
         void IWindowImpl.CanResize(bool value) => CanResize = value;
 
         public void Dispose()
