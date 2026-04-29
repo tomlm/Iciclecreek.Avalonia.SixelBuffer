@@ -21,6 +21,9 @@ namespace ControlCatalog.Terminal
                 .UseStandardRuntimePlatformSubsystem()
                 .WithInterFont()
                 .UseTerminal()
+#if DEBUG
+                .WithDeveloperTools()
+#endif
                 .UseManagedSystemDialogs();
 #pragma warning restore CA1416 // Validate platform compatibility
 

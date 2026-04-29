@@ -250,9 +250,15 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Terminal
         private void StartInputReading()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                Debug.WriteLine("[Input] Using Windows Console.ReadKey path");
                 StartInputReadingWindows();
+            }
             else
+            {
+                Debug.WriteLine("[Input] Using Unix libc read() path");
                 StartInputReadingUnix();
+            }
         }
 
         /// <summary>
@@ -314,6 +320,22 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Terminal
             if (keyInfo.Modifiers.HasFlag(ConsoleModifiers.Shift)) mods |= RawInputModifiers.Shift;
             if (keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt)) mods |= RawInputModifiers.Alt;
             if (keyInfo.Modifiers.HasFlag(ConsoleModifiers.Control)) mods |= RawInputModifiers.Control;
+
+            // When the terminal is in VT/raw mode, Console.ReadKey returns ConsoleKey.None
+            // with no modifiers. Fall back to CharToKey and derive modifiers from the character.
+            if (key == Key.None && keyInfo.KeyChar != '\0')
+            {
+                char ch = keyInfo.KeyChar;
+                key = CharToKey(ch);
+                if (mods == RawInputModifiers.None)
+                {
+                    if (char.IsUpper(ch) || "~!@#$%^&*()_+{}|:\"<>?".Contains(ch))
+                        mods = RawInputModifiers.Shift;
+                    else if (ch >= '\x01' && ch <= '\x1a')
+                        mods = RawInputModifiers.Control;
+                }
+            }
+
             RaiseKey(key, keyInfo.KeyChar, mods);
         }
 
@@ -692,6 +714,31 @@ namespace Iciclecreek.Avalonia.TerminalFramebuffer.Terminal
                 ' ' => Key.Space,
                 '\t' => Key.Tab,
                 '\r' or '\n' => Key.Enter,
+                '\b' or '\x7f' => Key.Back,
+                '\x1b' => Key.Escape,
+                '`' or '~' => Key.OemTilde,
+                '-' or '_' => Key.OemMinus,
+                '=' or '+' => Key.OemPlus,
+                '[' or '{' => Key.OemOpenBrackets,
+                ']' or '}' => Key.OemCloseBrackets,
+                '\\' or '|' => Key.OemBackslash,
+                ';' or ':' => Key.OemSemicolon,
+                '\'' or '"' => Key.OemQuotes,
+                ',' or '<' => Key.OemComma,
+                '.' or '>' => Key.OemPeriod,
+                '/' or '?' => Key.OemQuestion,
+                '!' => Key.D1,
+                '@' => Key.D2,
+                '#' => Key.D3,
+                '$' => Key.D4,
+                '%' => Key.D5,
+                '^' => Key.D6,
+                '&' => Key.D7,
+                '*' => Key.D8,
+                '(' => Key.D9,
+                ')' => Key.D0,
+                // Ctrl+letter produces 0x01-0x1A
+                >= '\x01' and <= '\x1a' => Key.A + (c - '\x01'),
                 _ => Key.None
             };
         }
