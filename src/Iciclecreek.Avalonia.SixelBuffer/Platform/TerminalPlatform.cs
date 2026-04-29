@@ -53,8 +53,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
                 .Bind<ICursorFactory>().ToConstant(new CursorFactory())
                 .Bind<IPlatformIconLoader>().ToConstant(new DummyIconLoader())
                 .Bind<IPlatformSettings>().ToConstant(new PlatformSettings())
-                .Bind<IRuntimePlatform>().ToConstant(new StandardRuntimePlatform());
-            ;
+                .Bind<IRuntimePlatform>().ToConstant(new StandardRuntimePlatform())
+                .Bind<IClipboardImpl>().ToConstant(new TerminalClipboard())
+                .Bind<IClipboard>().ToConstant(
+                    (IClipboard)Activator.CreateInstance(
+                        Type.GetType("Avalonia.Input.Platform.Clipboard, Avalonia.Base")!,
+                        new object[] { new TerminalClipboard() })!);
         }
     }
 

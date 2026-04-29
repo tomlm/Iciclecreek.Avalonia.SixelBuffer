@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
@@ -187,6 +188,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
                 var type = Type.GetType("Avalonia.Platform.Storage.FileIO.BclLauncher, Avalonia.Base");
                 if (type != null)
                     return Activator.CreateInstance(type, nonPublic: true)!;
+            }
+
+            if (featureType == typeof(IClipboard))
+            {
+                return AvaloniaLocator.Current.GetService<IClipboard>();
             }
 
             Debug.WriteLine($"Missing Feature: {featureType.Name}");
