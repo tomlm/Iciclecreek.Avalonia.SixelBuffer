@@ -226,7 +226,6 @@ namespace AvaloniaTerminalBuffer.Platform
             _dragStart = e.GetPosition(this.Parent as Visual);
             _dragStartPosition = this.Position;
             e.Pointer.Capture(this);
-            Debug.WriteLine($"[BeginMoveDrag] start={_dragStart} pos={_dragStartPosition}");
         }
 
         public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e)
@@ -239,7 +238,6 @@ namespace AvaloniaTerminalBuffer.Platform
             _dragStartPosition = this.Position;
             _dragStartSize = new Size(this.Width, this.Height);
             e.Pointer.Capture(this);
-            Debug.WriteLine($"[BeginResizeDrag] edge={edge} start={_dragStart} pos={_dragStartPosition} size={_dragStartSize}");
         }
 
         private void OnDragPointerMoved(object? sender, PointerEventArgs e)
@@ -256,7 +254,6 @@ namespace AvaloniaTerminalBuffer.Platform
                 var newPos = new PixelPoint(
                     _dragStartPosition.X + (int)deltaX,
                     _dragStartPosition.Y + (int)deltaY);
-                Debug.WriteLine($"[MoveDrag] current={current} delta=({deltaX},{deltaY}) newPos={newPos}");
                 this.Position = newPos;
             }
             else
@@ -294,8 +291,6 @@ namespace AvaloniaTerminalBuffer.Platform
                         break;
                 }
 
-                Debug.WriteLine($"[ResizeDrag] edge={_resizeEdge} delta=({deltaX},{deltaY}) pos=({left},{top}) size=({width},{height})");
-
                 if (width >= MinWidth && width <= MaxWidth)
                     this.Width = width;
                 if (height >= MinHeight && height <= MaxHeight)
@@ -311,7 +306,6 @@ namespace AvaloniaTerminalBuffer.Platform
             if (_dragStart == null)
                 return;
 
-            Debug.WriteLine($"[DragEnd] releasing capture");
             _dragStart = null;
             _resizeEdge = null;
             e.Pointer.Capture(null);
@@ -323,7 +317,6 @@ namespace AvaloniaTerminalBuffer.Platform
             if (_dragStart == null)
                 return;
 
-            Debug.WriteLine($"[PointerCaptureLost] ending drag");
             _dragStart = null;
             _resizeEdge = null;
         }
