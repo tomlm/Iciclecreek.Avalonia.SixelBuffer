@@ -1,9 +1,11 @@
 ﻿using Avalonia;
 using Avalonia.Dialogs;
 using System;
+using System.Runtime.Versioning;
 
 namespace HelloWorld.Desktop
 {
+    [SupportedOSPlatform("windows"), SupportedOSPlatform("macos"), SupportedOSPlatform("linux")]
     internal sealed class Program
     {
         // Initialization code. Don't use any Avalonia, third-party APIs or any

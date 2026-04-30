@@ -1,9 +1,11 @@
 ﻿using Avalonia;
 using Avalonia.Dialogs;
 using Iciclecreek.Avalonia.SixelBuffer;
+using System.Runtime.Versioning;
 
 namespace ControlCatalog.Terminal
 {
+    [SupportedOSPlatform("windows"), SupportedOSPlatform("macos"), SupportedOSPlatform("linux")]
     internal class Program
     {
 
@@ -14,7 +16,6 @@ namespace ControlCatalog.Terminal
                 .StartWithConsoleLifetime(args);
         }
 
-#pragma warning disable CA1416 // Validate platform compatibility
         public static AppBuilder BuildAvaloniaApp()
         {
             return AppBuilder.Configure<App>()
