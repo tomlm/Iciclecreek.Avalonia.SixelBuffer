@@ -1,5 +1,7 @@
 [![Build and Test](https://github.com/tomlm/Iciclecreek.Avalonia.SixelBuffer/actions/workflows/BuildAndRunTests.yml/badge.svg)](https://github.com/tomlm/Iciclecreek.Avalonia.SixelBuffer/actions/workflows/BuildAndRunTests.yml)[![NuGet](https://img.shields.io/nuget/v/Iciclecreek.Avalonia.SixelBuffer.svg)](https://www.nuget.org/packages/Iciclecreek.Avalonia.SixelBuffer)
+
 ![Logo](https://raw.githubusercontent.com/tomlm/Iciclecreek.Avalonia.SixelBuffer/refs/heads/main/icon.png)
+
 
 # Iciclecreek.Avalonia.SixelBuffer
 ![Screenshot](https://raw.githubusercontent.com/tomlm/Iciclecreek.Avalonia.SixelBuffer/refs/heads/main/screenshot.gif)
