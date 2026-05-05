@@ -59,5 +59,4 @@ internal static class Program
 - **No native Menus** -- Don't use NativeMenu/NativeMenuItem as they won't work in terminal mode. Use Avalonia's Menu control instead.
 - **No native popups** -- Popups and dropdown overlays are managed within the single terminal frame rather than as separate OS windows.
 - **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.2).
-- **Mouse resolution** -- Mouse input is limited to the terminal's reporting resolution, which is the same as the character cell grid. This 
--   means you won't get pixel-level mouse coordinates, only the cell coordinates of the terminal.
+- **Mouse resolution** -- Mouse input is limited to the terminal's reporting resolution, which is the same as the character cell grid. This means you won't get pixel-level mouse coordinates, only the cell coordinates of the terminal.
