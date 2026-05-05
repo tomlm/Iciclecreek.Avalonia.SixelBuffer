@@ -544,8 +544,10 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
                     var (newPalette, _) = Sixel.QuantizeForPalette(frame);
 
-                    // Only flag a refresh if enough palette entries changed
-                    if (oldPalette != null && PaletteDiffCount(oldPalette, newPalette) < 20)
+                    // Only flag a refresh if a large portion of the palette changed.
+                    // A high threshold avoids forcing expensive full-frame redraws when
+                    // animations shift color distribution slightly each frame.
+                    if (oldPalette != null && PaletteDiffCount(oldPalette, newPalette) < 64)
                         continue;
 
                     Volatile.Write(ref _pendingPalette, newPalette);

@@ -12,7 +12,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
 {
     internal class TerminalPlatform : IWindowingPlatform
     {
-        internal static int TargetFps { get; set; } = 10;
+        internal static int TargetFps { get; set; } = 15;
 
         private IWindowImpl? _mainWindow;
 

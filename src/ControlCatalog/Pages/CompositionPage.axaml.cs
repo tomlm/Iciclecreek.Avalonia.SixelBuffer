@@ -217,6 +217,14 @@ public partial class CompositionPage : TabbedPage
 
     class CustomVisualHandler : CompositionCustomVisualHandler
     {
+        private static readonly Color[] PaletteColors =
+        {
+            Colors.Red, Colors.Green, Colors.Blue, Colors.Yellow,
+            Colors.Cyan, Colors.Magenta, Colors.Orange, Colors.Purple,
+            Colors.Lime, Colors.Teal, Colors.Coral, Colors.Gold,
+            Colors.Indigo, Colors.Crimson, Colors.DodgerBlue, Colors.OrangeRed
+        };
+
         private TimeSpan _animationElapsed;
         private TimeSpan? _lastServerTime;
         private bool _running;
@@ -251,18 +259,14 @@ public partial class CompositionPage : TabbedPage
             for (var c = 0; c < cnt; c++)
             {
                 var stage = (animationStage + (double)c / cnt) % 1;
-                var colorStage =
-                    (animationStage + (Math.Sin(_animationElapsed.TotalSeconds * 2) + 1) / 2 + (double)c / cnt) % 1;
+                var colorIndex =
+                    (int)((animationStage + (Math.Sin(_animationElapsed.TotalSeconds * 2) + 1) / 2 + (double)c / cnt) % 1 * 16) % 16;
                 var posX = (EffectiveSize.X + pointSize * 3) * stage - pointSize;
                 var posY = (EffectiveSize.Y - pointSize) * (1 + Math.Sin(stage * 3.14 * 3 + sinOffset)) / 2 + pointSize / 2;
                 var opacity = Math.Sin(stage * 3.14);
 
-                _ellipses.Add((new Point(posX, posY), pointSize / 2, new ImmutableSolidColorBrush(Color.FromArgb(
-                    255,
-                    (byte)(255 - 255 * colorStage),
-                    (byte)(255 * Math.Abs(0.5 - colorStage) * 2),
-                    (byte)(255 * colorStage)
-                ), opacity)));
+                _ellipses.Add((new Point(posX, posY), pointSize / 2, new ImmutableSolidColorBrush(
+                    PaletteColors[colorIndex], opacity)));
             }
         }
         

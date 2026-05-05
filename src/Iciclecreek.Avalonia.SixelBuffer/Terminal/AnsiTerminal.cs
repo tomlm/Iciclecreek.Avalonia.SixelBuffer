@@ -243,7 +243,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                             Size = new TerminalSize((ushort)cols, (ushort)rows);
                             timeout = 1;
                         }
-                    }, DispatcherPriority.Input);
+                    }, DispatcherPriority.Send);
                     await Task.Delay(timeout);
                 }
             });
@@ -322,20 +322,20 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                         {
                             await Dispatcher.UIThread.InvokeAsync(
                                 () => RaiseKey(Key.Escape, '\x1b', RawInputModifiers.None),
-                                DispatcherPriority.Input);
+                                DispatcherPriority.Send);
                         }
                         else
                         {
                             var data = buf.ToArray();
                             await Dispatcher.UIThread.InvokeAsync(
-                                () => ProcessInput(data), DispatcherPriority.Input);
+                                () => ProcessInput(data), DispatcherPriority.Send);
                         }
                     }
                     else
                     {
                         var ki = keyInfo;
                         await Dispatcher.UIThread.InvokeAsync(
-                            () => ProcessConsoleKeyInfo(ki), DispatcherPriority.Input);
+                            () => ProcessConsoleKeyInfo(ki), DispatcherPriority.Send);
                     }
                 }
             });
@@ -425,7 +425,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                     if (bytesRead <= 0) continue;
 
                     var data = buf.AsSpan(0, bytesRead).ToArray();
-                    await Dispatcher.UIThread.InvokeAsync(() => ProcessInput(data), DispatcherPriority.Input);
+                    await Dispatcher.UIThread.InvokeAsync(() => ProcessInput(data), DispatcherPriority.Send);
                 }
             });
         }
