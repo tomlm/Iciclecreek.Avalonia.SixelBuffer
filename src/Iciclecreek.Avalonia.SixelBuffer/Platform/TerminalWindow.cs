@@ -80,7 +80,15 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         ///     terminal accepts OSC 22 pointer shapes, in which case the terminal draws
         ///     its own native pointer and we only pass the shape through.
         /// </summary>
-        internal bool SoftwareCursorEnabled => !Terminal.PointerShapeSupported;
+        internal bool SoftwareCursorEnabled => ForceSoftwareCursor || !Terminal.PointerShapeSupported;
+
+        /// <summary>
+        ///     SIXELBUFFER_SOFTWARE_CURSOR=1 draws the composited cursor even in a terminal that
+        ///     accepts OSC 22 pointer shapes, so the software cursor can be tested there. The
+        ///     terminal's own pointer is left at its default shape in that case.
+        /// </summary>
+        private static readonly bool ForceSoftwareCursor =
+            Environment.GetEnvironmentVariable("SIXELBUFFER_SOFTWARE_CURSOR") == "1";
 
         internal void ClearCursorDirty() => CursorDirty = false;
 
@@ -117,7 +125,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
                 CursorType = cursor is CursorImpl ci ? ci.CursorType : StandardCursorType.Arrow;
             }
 
-            if (Terminal.PointerShapeSupported)
+            if (Terminal.PointerShapeSupported && !ForceSoftwareCursor)
             {
                 // Pass the shape through to the terminal's native pointer (OSC 22).
                 // Custom bitmap cursors have no OSC 22 equivalent and fall back to "default".
