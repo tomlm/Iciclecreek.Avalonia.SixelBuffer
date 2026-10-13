@@ -75,6 +75,13 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         internal Point CursorPixelPosition { get; private set; }
         internal bool CursorDirty { get; private set; }
 
+        /// <summary>
+        ///     True when the cursor must be composited into the frame. False when the
+        ///     terminal accepts OSC 22 pointer shapes, in which case the terminal draws
+        ///     its own native pointer and we only pass the shape through.
+        /// </summary>
+        internal bool SoftwareCursorEnabled => !Terminal.PointerShapeSupported;
+
         internal void ClearCursorDirty() => CursorDirty = false;
 
         internal void InvalidateRender() => Paint?.Invoke(new Rect(ClientSize));
@@ -108,6 +115,14 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
             {
                 BitmapCursor = null;
                 CursorType = cursor is CursorImpl ci ? ci.CursorType : StandardCursorType.Arrow;
+            }
+
+            if (Terminal.PointerShapeSupported)
+            {
+                // Pass the shape through to the terminal's native pointer (OSC 22).
+                // Custom bitmap cursors have no OSC 22 equivalent and fall back to "default".
+                Terminal.SetPointerShape(PointerShapes.ToOsc22(CursorType));
+                return;
             }
 
             CursorDirty = true;
@@ -301,19 +316,21 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Platform
         private void OnMouseEvent(RawPointerEventType type, Point point, Vector? wheelDelta,
             RawInputModifiers modifiers)
         {
-            // Scale mouse coords from cells to pixels
-            point = new Point(point.X * Terminal.CellPixelWidth, point.Y * Terminal.CellPixelHeight);
-
+            // Terminal reports pixel coordinates (native when DECSET 1016 is supported,
+            // otherwise scaled from the cell grid).
             var oldPos = CursorPixelPosition;
             CursorPixelPosition = point;
 
-            // Fast cursor update if cursor cell changed (no full frame render)
-            int newCol = (int)(point.X / Terminal.CellPixelWidth);
-            int newRow = (int)(point.Y / Terminal.CellPixelHeight);
-            int oldCol = (int)(oldPos.X / Terminal.CellPixelWidth);
-            int oldRow = (int)(oldPos.Y / Terminal.CellPixelHeight);
-            if (newCol != oldCol || newRow != oldRow)
-                CursorDirty = true;
+            // Fast cursor update (no full frame render). With pixel-resolution mouse
+            // reporting the software cursor tracks every pixel; otherwise only cell changes matter.
+            if (SoftwareCursorEnabled)
+            {
+                bool moved = Terminal.PixelMouseSupported
+                    ? point != oldPos
+                    : (int)(point.X / Terminal.CellPixelWidth) != (int)(oldPos.X / Terminal.CellPixelWidth) ||
+                      (int)(point.Y / Terminal.CellPixelHeight) != (int)(oldPos.Y / Terminal.CellPixelHeight);
+                if (moved) CursorDirty = true;
+            }
 
             ulong timestamp = (ulong)Environment.TickCount64;
             if (type == RawPointerEventType.Wheel)

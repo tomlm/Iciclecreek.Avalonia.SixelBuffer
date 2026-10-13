@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
@@ -14,12 +16,17 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 {
     /// <summary>
     ///     Cross-platform ANSI terminal with VT escape sequence input parsing.
-    ///     Supports keyboard and SGR extended mouse mode.
+    ///     Supports keyboard and SGR extended mouse mode, with SGR-Pixels (DECSET 1016)
+    ///     pixel-resolution mouse reporting when the terminal supports it.
     /// </summary>
     public class AnsiTerminal : ITerminal
     {
         private readonly AnsiTerminalOutput _output;
         private bool _disposed;
+        private bool _pixelMouse;
+        private bool _pointerShapeSupported;
+        private bool _synchronizedOutput;
+        private string? _currentPointerShape;
 
         public AnsiTerminal()
         {
@@ -42,6 +49,9 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         public int CellPixelHeight => _output.CellPixelHeight;
         public int PixelWidth => _output.PixelWidth;
         public int PixelHeight => _output.PixelHeight;
+        public bool PixelMouseSupported => _pixelMouse;
+        public bool PointerShapeSupported => _pointerShapeSupported;
+        public bool SynchronizedOutputSupported => _synchronizedOutput;
 
         public event Action? Resized;
         public event Action<Key, char, RawInputModifiers, bool, ulong, bool>? KeyEvent;
@@ -49,10 +59,21 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         public event Action<bool>? FocusEvent;
 
         public void SetTitle(string title) => _output.SetTitle(title);
+
+        public void SetPointerShape(string shape)
+        {
+            if (!_pointerShapeSupported || string.IsNullOrEmpty(shape)) return;
+            if (shape == _currentPointerShape) return;
+            _currentPointerShape = shape;
+            _output.WriteText(Esc.SetPointerShape(shape));
+            _output.Flush();
+        }
         public void SetCaretPosition(CellPosition position) => _output.SetCaretPosition(position);
         public void HideCaret() => _output.HideCaret();
         public void WriteEsc(string escape) => _output.WriteText(escape);
-        public void WriteSixel(CellPosition position, Sixel sixel) => _output.WriteSixel(position, sixel);
+        public void WriteSixel(CellPosition position, ReadOnlySpan<byte> sixel) => _output.WriteSixel(position, sixel);
+        public void BeginFrame() => _output.BeginFrame();
+        public void EndFrame() => _output.EndFrame();
         public void Flush() => _output.Flush();
         public void ClearScreen() => _output.ClearScreen();
 
@@ -62,10 +83,16 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             EnableRawMode();
             DetectSixelSupport();
             DetectCellSize();
+            DetectPixelMouseSupport();
+            DetectPointerShapeSupport();
+            DetectSynchronizedOutputSupport();
 
-            // Enable SGR extended mouse tracking
+            // Enable SGR extended mouse tracking. If the terminal supports SGR-Pixels
+            // (DECSET 1016), enable it after 1006 so pixel coordinates take precedence.
             _output.WriteText(Esc.EnableAllMouseEvents);
             _output.WriteText(Esc.EnableExtendedMouseTracking);
+            if (_pixelMouse)
+                _output.WriteText(Esc.EnablePixelMouseTracking);
             _output.Flush();
 
             StartSizeCheckTimer();
@@ -74,7 +101,16 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 
         public void RestoreConsole()
         {
+            // Hand the pointer back to the terminal's default shape if we changed it
+            if (_pointerShapeSupported && _currentPointerShape != null && _currentPointerShape != "default")
+            {
+                _output.WriteText(Esc.SetPointerShape("default"));
+                _currentPointerShape = null;
+            }
+
             _output.WriteText(Esc.DisableAllMouseEvents);
+            if (_pixelMouse)
+                _output.WriteText(Esc.DisablePixelMouseTracking);
             _output.WriteText(Esc.DisableExtendedMouseTracking);
             _output.RestoreConsole();
             RestoreRawMode();
@@ -112,6 +148,71 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                 "This terminal does not support Sixel graphics. " +
                 "Use a Sixel-capable terminal such as Windows Terminal, WezTerm, iTerm2, or foot. " +
                 "See https://www.arewesixelyet.com/ for a list of compatible terminals.");
+        }
+
+        #endregion
+
+        #region DEC private mode detection (DECRQM)
+
+        /// <summary>
+        ///     Ask whether the terminal recognizes a DEC private mode.
+        ///     Request: CSI ? mode $ p. Reply: CSI ? mode ; Ps $ y, where
+        ///     Ps = 0 not recognized, 1 set, 2 reset, 3 permanently set, 4 permanently reset.
+        ///     Terminals that don't implement DECRQM simply don't answer (timeout).
+        /// </summary>
+        private bool QueryPrivateModeSupported(int mode)
+        {
+            string response = RequestAnsiResponse(Esc.QueryPrivateMode(mode), 'y', 200);
+
+            int qIdx = response.IndexOf('?');
+            int dIdx = response.LastIndexOf('$');
+            if (qIdx < 0 || dIdx < qIdx || !response.EndsWith('y'))
+                return false;
+
+            string[] parts = response[(qIdx + 1)..dIdx].Split(';');
+            return parts.Length == 2 &&
+                   parts[0] == mode.ToString() &&
+                   int.TryParse(parts[1], out int state) &&
+                   state is 1 or 2 or 3; // recognized and settable, or permanently on
+        }
+
+        private void DetectPixelMouseSupport()
+        {
+            _pixelMouse = QueryPrivateModeSupported(1016);
+            Debug.WriteLine($"[Mouse] SGR-Pixels (DECSET 1016) supported: {_pixelMouse}");
+        }
+
+        private void DetectSynchronizedOutputSupport()
+        {
+            _synchronizedOutput = QueryPrivateModeSupported(2026);
+            _output.SynchronizedOutput = _synchronizedOutput;
+            Debug.WriteLine($"[Output] Synchronized output (DECSET 2026) supported: {_synchronizedOutput}");
+        }
+
+        #endregion
+
+        #region Pointer shape (OSC 22) detection
+
+        private void DetectPointerShapeSupport()
+        {
+            // Query: OSC 22 ; ?__current__ ST
+            // Reply: OSC 22 ; <shape-name> ST   (kitty pointer-shapes protocol)
+            // Terminals that only implement the "set" half of OSC 22 (e.g. xterm) don't
+            // reply, so they keep the software cursor — better than a silently missing pointer.
+            _pointerShapeSupported = false;
+
+            string response = RequestAnsiResponse(Esc.QueryPointerShape, '\\', 200);
+
+            int idx = response.IndexOf("]22;", StringComparison.Ordinal);
+            if (idx >= 0 && (response.EndsWith("\u001b\\") || response.EndsWith('\u0007')))
+            {
+                string body = response[(idx + 4)..].TrimEnd('\u001b', '\\', '\u0007');
+                _pointerShapeSupported = body.Length > 0;
+                if (_pointerShapeSupported)
+                    _currentPointerShape = body;
+            }
+
+            Debug.WriteLine($"[Cursor] OSC 22 pointer shapes supported: {_pointerShapeSupported}");
         }
 
         #endregion
@@ -272,7 +373,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         /// <summary>
         ///     Single cross-platform input reader. Raw mode is enabled via EnableRawMode()
         ///     (SetConsoleMode on Windows, tcsetattr on Unix). Then we read raw bytes from
-        ///     stdin and parse VT escape sequences ourselves.
+        ///     stdin and parse VT escape sequences ourselves, on the reader thread.
+        ///     Parsed events are queued and raised on the UI thread; the reader never waits
+        ///     for the UI thread, so stdin always drains. If it did wait, a terminal that is
+        ///     blocked writing mouse input to us could stop reading our output, and our UI
+        ///     thread would then block on that output: a circular wait.
         ///     On Unix we use libc read() directly to avoid .NET Console resetting terminal mode.
         /// </summary>
         private void StartInputReading()
@@ -311,7 +416,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                     {
                         // Escape — collect follow-up bytes for VT sequence (mouse, etc.)
                         var buf = new List<byte> { 0x1b };
-                        await Task.Delay(1);
+                        // Only pause when nothing follows yet, to tell a lone Escape key from
+                        // the start of a sequence. Task.Delay(1) is ~15 ms on Windows, which
+                        // would cap input at ~60 sequences a second; pixel mouse motion sends far more.
+                        if (!System.Console.KeyAvailable)
+                            await Task.Delay(1);
                         while (System.Console.KeyAvailable)
                         {
                             try { buf.Add((byte)System.Console.ReadKey(true).KeyChar); }
@@ -319,23 +428,13 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                         }
 
                         if (buf.Count == 1)
-                        {
-                            await Dispatcher.UIThread.InvokeAsync(
-                                () => RaiseKey(Key.Escape, '\x1b', RawInputModifiers.None),
-                                DispatcherPriority.Send);
-                        }
+                            RaiseKey(Key.Escape, '\x1b', RawInputModifiers.None);
                         else
-                        {
-                            var data = buf.ToArray();
-                            await Dispatcher.UIThread.InvokeAsync(
-                                () => ProcessInput(data), DispatcherPriority.Send);
-                        }
+                            ProcessInput(buf.ToArray());
                     }
                     else
                     {
-                        var ki = keyInfo;
-                        await Dispatcher.UIThread.InvokeAsync(
-                            () => ProcessConsoleKeyInfo(ki), DispatcherPriority.Send);
+                        ProcessConsoleKeyInfo(keyInfo);
                     }
                 }
             });
@@ -424,8 +523,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 
                     if (bytesRead <= 0) continue;
 
-                    var data = buf.AsSpan(0, bytesRead).ToArray();
-                    await Dispatcher.UIThread.InvokeAsync(() => ProcessInput(data), DispatcherPriority.Send);
+                    ProcessInput(buf.AsSpan(0, bytesRead).ToArray());
                 }
             });
         }
@@ -555,10 +653,10 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                     }
                     return totalLen;
                 case (byte)'I': // Focus in
-                    FocusEvent?.Invoke(true);
+                    Enqueue(() => FocusEvent?.Invoke(true));
                     return totalLen;
                 case (byte)'O': // Focus out
-                    FocusEvent?.Invoke(false);
+                    Enqueue(() => FocusEvent?.Invoke(false));
                     return totalLen;
             }
 
@@ -567,7 +665,8 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
 
         private int TryParseSgrMouse(byte[] data, int start)
         {
-            // Format: ESC [ < button ; col ; row M/m
+            // Format: ESC [ < button ; x ; y M/m
+            // x/y are 1-based character cells (DECSET 1006) or 1-based pixels (DECSET 1016).
             int paramStart = start + 3; // after ESC [ <
             int end = paramStart;
             while (end < data.Length && data[end] != 'M' && data[end] != 'm')
@@ -581,15 +680,19 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             if (parts.Length != 3) return end - start + 1;
 
             if (!int.TryParse(parts[0], out int button) ||
-                !int.TryParse(parts[1], out int col) ||
-                !int.TryParse(parts[2], out int row))
+                !int.TryParse(parts[1], out int x) ||
+                !int.TryParse(parts[2], out int y))
                 return end - start + 1;
 
             // SGR reports 1-based coordinates
-            col--;
-            row--;
+            x--;
+            y--;
 
-            var point = new Point(col, row);
+            // Always raise pixel coordinates. In SGR-Pixels mode the terminal already
+            // reports pixels; otherwise scale the cell position to the cell's top-left pixel.
+            Point point = _pixelMouse
+                ? new Point(x, y)
+                : new Point(x * _output.CellPixelWidth, y * _output.CellPixelHeight);
             int buttonId = button & 0x03;
             bool motion = (button & 0x20) != 0;
             bool wheel = (button & 0x40) != 0;
@@ -602,7 +705,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             if (wheel)
             {
                 double delta = buttonId == 0 ? 1 : -1;
-                MouseEvent?.Invoke(RawPointerEventType.Wheel, point, new Vector(0, delta), mods);
+                Enqueue(() => MouseEvent?.Invoke(RawPointerEventType.Wheel, point, new Vector(0, delta), mods));
             }
             else if (motion)
             {
@@ -614,7 +717,9 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                     2 => RawInputModifiers.RightMouseButton,
                     _ => RawInputModifiers.None
                 };
-                MouseEvent?.Invoke(RawPointerEventType.Move, point, null, mods);
+                // Motion is coalesced on the UI thread: only the latest position matters
+                var moveMods = mods;
+                Enqueue(() => MouseEvent?.Invoke(RawPointerEventType.Move, point, null, moveMods), isPointerMove: true);
             }
             else
             {
@@ -640,7 +745,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                     };
                 }
 
-                MouseEvent?.Invoke(type, point, null, mods);
+                Enqueue(() => MouseEvent?.Invoke(type, point, null, mods));
             }
 
             return end - start + 1;
@@ -775,11 +880,45 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             bool tryAsTextInput = true)
         {
             ulong timestamp = (ulong)Environment.TickCount64;
-            // KeyDown first
-            KeyEvent?.Invoke(key, character, modifiers, true, timestamp, false);
-            // KeyUp with tryAsTextInput — TerminalWindow will send RawTextInputEventArgs
-            // only if the key wasn't handled and isn't a control char
-            KeyEvent?.Invoke(key, character, modifiers, false, timestamp, tryAsTextInput);
+            Enqueue(() =>
+            {
+                // KeyDown first
+                KeyEvent?.Invoke(key, character, modifiers, true, timestamp, false);
+                // KeyUp with tryAsTextInput — TerminalWindow will send RawTextInputEventArgs
+                // only if the key wasn't handled and isn't a control char
+                KeyEvent?.Invoke(key, character, modifiers, false, timestamp, tryAsTextInput);
+            });
+        }
+
+        // Parsed input waiting to be raised on the UI thread. The reader thread enqueues
+        // and posts one drain; the drain raises everything queued, dropping a pointer
+        // move when another move already follows it.
+        private readonly ConcurrentQueue<PendingInput> _pendingInput = new();
+        private int _drainScheduled;
+
+        private readonly record struct PendingInput(Action Raise, bool IsPointerMove);
+
+        private void Enqueue(Action raise, bool isPointerMove = false)
+        {
+            _pendingInput.Enqueue(new PendingInput(raise, isPointerMove));
+            // Send priority: input must not wait behind render work, or a busy render loop
+            // starves it. Moves are coalesced in the drain, so a flood cannot starve rendering.
+            if (Interlocked.Exchange(ref _drainScheduled, 1) == 0)
+                Dispatcher.UIThread.Post(DrainInput, DispatcherPriority.Send);
+        }
+
+        private void DrainInput()
+        {
+            // Reset first: anything enqueued after this point schedules its own drain
+            Interlocked.Exchange(ref _drainScheduled, 0);
+
+            while (_pendingInput.TryDequeue(out PendingInput ev))
+            {
+                if (ev.IsPointerMove && _pendingInput.TryPeek(out PendingInput next) && next.IsPointerMove)
+                    continue; // a newer position is already waiting
+
+                ev.Raise();
+            }
         }
 
         private static async Task WaitForDispatcher()

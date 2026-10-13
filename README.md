@@ -12,10 +12,10 @@ Run your Avalonia applications directly in a terminal using [Sixel](https://en.w
 
 Iciclecreek.Avalonia.SixelBuffer replaces Avalonia's native windowing platform with a terminal-based implementation:
 
-- **Sixel rendering** -- Avalonia controls are rendered via Skia, quantized to a 256-color palette, and output as Sixel escape sequences.
-- **Input handling** -- Keyboard and mouse input are read from stdin using VT/ANSI escape sequence parsing (including SGR extended mouse tracking).
-- **Frame diffing** -- Only changed regions are re-rendered, with dirty-rect tracking and SIMD-optimized sixel band construction for performance.
-- **Software cursor** -- A composited software cursor is drawn into the frame since hardware cursors aren't available in terminal mode.
+- **Sixel rendering** -- Avalonia controls are rendered via Skia, quantized to at most 256 colors (exactly when the changed pixels hold 256 colors or fewer, Wu's quantizer otherwise), and output as Sixel escape sequences that define only the colors they use.
+- **Input handling** -- Keyboard and mouse input are read from stdin using VT/ANSI escape sequence parsing (including SGR extended mouse tracking, and SGR-Pixels / DECSET 1016 for pixel-resolution mouse positions where supported).
+- **Frame diffing** -- Each frame is compared cell by cell with what the terminal shows. Only changed cells are sent, as one Sixel per horizontal run of changed cells, with SIMD-optimized sixel band construction. Runs the terminal has already been sent replay from a content-keyed cache (a closed popup or a reverted hover costs no re-encoding), and each frame goes out as a single write inside a DEC 2026 synchronized update where the terminal supports it.
+- **Mouse pointer** -- At startup the library queries the terminal for OSC 22 pointer shape support (the kitty pointer-shapes protocol). When supported, Avalonia cursor changes are passed through to the terminal's native mouse pointer. Otherwise a composited software cursor is drawn into the frame.
 
 Requires a Sixel-capable terminal emulator such as Windows Terminal, WezTerm, iTerm2, etc. See https://www.arewesixelyet.com/ for a list of compatible terminals.
 
@@ -59,4 +59,4 @@ internal static class Program
 - **No native Menus** -- Don't use NativeMenu/NativeMenuItem as they won't work in terminal mode. Use Avalonia's Menu control instead.
 - **No native popups** -- Popups and dropdown overlays are managed within the single terminal frame rather than as separate OS windows.
 - **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.2).
-- **Mouse resolution** -- Mouse input is limited to the terminal's reporting resolution, which is the same as the character cell grid. This means you won't get pixel-level mouse coordinates, only the cell coordinates of the terminal.
+- **Mouse resolution** -- At startup the library queries the terminal (DECRQM) for SGR-Pixels mouse mode (DECSET 1016). If supported, mouse positions are reported at pixel resolution and the software cursor (when used) follows the pointer pixel by pixel. Otherwise mouse input falls back to the character cell grid, so positions snap to the top-left pixel of the cell under the pointer.
