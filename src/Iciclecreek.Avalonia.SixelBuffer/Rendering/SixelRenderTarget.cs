@@ -18,7 +18,7 @@ using SkiaSharp;
 namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     /// <summary>
-    ///     Render target that turns Avalonia frames into sixel output.
+    ///     Render target that turns Avalonia frames into Sixel or kitty graphics output.
     ///     Each frame is compared cell by cell with the frame the terminal shows. Changed
     ///     cells are joined into horizontal runs; runs the terminal has already been sent
     ///     replay from a content-keyed cache, and the rest are quantized together once and
@@ -69,6 +69,14 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         private byte[]? _wuIndices;
         private readonly ArrayBufferWriter<byte> _runWriter = new(16 * 1024);
         private readonly ContentCache _runCache = new(RunCacheBudgetBytes);
+
+        // Kitty: the screen is a fixed grid of blocks, each an image under an id derived from
+        // its position. A changed block is sent again under its id, which replaces it in place.
+        private const int BlockCols = 8;
+        private const int BlockRows = 4;
+        private byte[]? _blockPixels;
+        private byte[]? _blockRgb;
+        private readonly MemoryStream _zlibScratch = new();
 
         // Software cursor: bitmap cache plus where it was last drawn
         private SKBitmap? _cursorBitmap;
@@ -302,9 +310,16 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
             PlaceCursor(cursor, width, height, cols, rows, out Point cursorDraw, out CursorRegion cursorRegion);
 
-            BuildSpans(cols, rows);
-            if (_spans.Count > 0)
-                WriteRuns(frame, width, height, cursor, cursorDraw, cursorRegion);
+            if (_terminal.Protocol == ImageProtocol.Kitty)
+            {
+                WriteBlocks(frame, width, cols, rows, full, cursor, cursorDraw, cursorRegion);
+            }
+            else
+            {
+                BuildSpans(cols, rows);
+                if (_spans.Count > 0)
+                    WriteRuns(frame, width, height, cursor, cursorDraw, cursorRegion);
+            }
 
             // This frame is what the terminal shows now
             if (_shown != null)
@@ -330,6 +345,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
             if (!PlaceCursor(cursor, width, height, cols, rows, out Point cursorDraw, out CursorRegion cursorRegion))
                 return; // nothing moved or changed
+
+            if (_terminal.Protocol == ImageProtocol.Kitty)
+            {
+                WriteBlocks(_shown, width, cols, rows, false, cursor, cursorDraw, cursorRegion);
+                return;
+            }
 
             BuildSpans(cols, rows);
             if (_spans.Count > 0)
@@ -483,7 +504,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                         int spanW = span.Cols * cellW;
                         EnsureSize(ref _spanPixels, spanW * 4 * cellH);
                         CopyRows(frame, stride, srcX, _spanPixels!, spanW * 4, 0, spanW * 4, cellH);
-                        DrawCursor(_spanPixels!, spanW, spanW * 4, cursor,
+                        DrawCursor(_spanPixels!, spanW, spanW * 4, cellH, cursor,
                             (float)(cursorDraw.X - span.Col * cellW), (float)(cursorDraw.Y - span.Row * cellH));
                         src = _spanPixels!;
                         srcStride = spanW * 4;
@@ -504,7 +525,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                         run.Key = KeyOf(frame, stride, run);
                         if (_runCache.TryGet(run.Key, out byte[] cached))
                         {
-                            _terminal.WriteSixel(new CellPosition((ushort)run.Col, (ushort)run.Row), cached);
+                            _terminal.WriteImage(new CellPosition((ushort)run.Col, (ushort)run.Row), cached);
                             continue;
                         }
                     }
@@ -537,7 +558,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                         foreach (Run run in _wuRuns)
                         {
                             if (run.Cacheable) continue; // only runs the cursor touches
-                            DrawCursor(wuGather, wuWidth, wuStride, cursor,
+                            DrawCursor(wuGather, wuWidth, wuStride, cellH, cursor,
                                 (float)(cursorDraw.X - run.Col * cellW + run.WuX), (float)(cursorDraw.Y - run.Row * cellH),
                                 run.WuX, run.Cols * cellW);
                         }
@@ -677,9 +698,100 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             sixel.RenderTo(_runWriter);
             ReadOnlySpan<byte> bytes = _runWriter.WrittenSpan;
 
-            _terminal.WriteSixel(new CellPosition((ushort)run.Col, (ushort)run.Row), bytes);
+            _terminal.WriteImage(new CellPosition((ushort)run.Col, (ushort)run.Row), bytes);
             if (run.Cacheable)
                 _runCache.Add(run.Key, bytes.ToArray());
+        }
+
+        #endregion
+
+        #region Render thread: kitty blocks
+
+        /// <summary>
+        ///     Send every block that holds a dirty cell. A block's image id is its position in
+        ///     the grid, so sending it again replaces what the terminal shows there; nothing
+        ///     accumulates and nothing needs deleting while the grid stays the same size. Blocks
+        ///     seen before replay their compressed pixels from the cache.
+        /// </summary>
+        private void WriteBlocks(byte[] frame, int width, int cols, int rows, bool full,
+            CursorState cursor, Point cursorDraw, CursorRegion cursorRegion)
+        {
+            if (Array.IndexOf(_dirty, true, 0, cols * rows) < 0)
+                return;
+
+            int cellW = _cellPixelWidth;
+            int cellH = _cellPixelHeight;
+            int stride = width * 4;
+            int blockCols = (cols + BlockCols - 1) / BlockCols;
+
+            _terminal.BeginFrame();
+            _terminal.HideCaret();
+            try
+            {
+                // A full frame follows a resize or a clear: the grid may have changed shape, so
+                // ids may mean new positions. Start from no images at all.
+                if (full)
+                    _terminal.WriteEsc(Esc.KittyDeleteAllImages);
+
+                for (int by = 0; by * BlockRows < rows; by++)
+                {
+                    for (int bx = 0; bx * BlockCols < cols; bx++)
+                    {
+                        int c0 = bx * BlockCols;
+                        int r0 = by * BlockRows;
+                        int bc = Math.Min(BlockCols, cols - c0);
+                        int br = Math.Min(BlockRows, rows - r0);
+                        if (!AnyDirty(c0, r0, bc, br, cols))
+                            continue;
+
+                        int w = bc * cellW;
+                        int h = br * cellH;
+                        int blockBytes = w * h * 4;
+                        EnsureSize(ref _blockPixels, blockBytes);
+                        byte[] block = _blockPixels!;
+                        CopyRows(frame, stride, r0 * cellH * stride + c0 * cellW * 4, block, w * 4, 0, w * 4, h);
+
+                        bool touchesCursor = cursor.Software && cursorRegion.OverlapsCells(c0, r0, bc, br);
+                        if (touchesCursor)
+                            DrawCursor(block, w, w * 4, h, cursor,
+                                (float)(cursorDraw.X - c0 * cellW), (float)(cursorDraw.Y - r0 * cellH));
+
+                        ContentKey key = default;
+                        byte[]? payload = null;
+                        if (!touchesCursor)
+                        {
+                            key = ContentKey.Of(block.AsSpan(0, blockBytes), w, h);
+                            if (_runCache.TryGet(key, out byte[] cached))
+                                payload = cached;
+                        }
+
+                        if (payload == null)
+                        {
+                            payload = KittyGraphics.CompressRgb(block.AsSpan(0, blockBytes), w, h, ref _blockRgb, _zlibScratch);
+                            if (!touchesCursor)
+                                _runCache.Add(key, payload);
+                        }
+
+                        int imageId = by * blockCols + bx + 1;
+                        _runWriter.ResetWrittenCount();
+                        KittyGraphics.WriteTransmit(_runWriter, imageId, w, h, payload);
+                        _terminal.WriteImage(new CellPosition((ushort)c0, (ushort)r0), _runWriter.WrittenSpan);
+                    }
+                }
+            }
+            finally
+            {
+                _terminal.SetCaretPosition(new CellPosition(0, 0));
+                _terminal.EndFrame();
+            }
+        }
+
+        private bool AnyDirty(int c0, int r0, int bc, int br, int cols)
+        {
+            for (int r = r0; r < r0 + br; r++)
+                for (int c = c0; c < c0 + bc; c++)
+                    if (_dirty[r * cols + c]) return true;
+            return false;
         }
 
         private ContentKey KeyOf(byte[] frame, int stride, Run run)
@@ -693,8 +805,8 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             return new ContentKey(_hasher.GetCurrentHashAsUInt128(), run.Cols * _cellPixelWidth, cellH);
         }
 
-        /// <summary>Draw the software cursor into a one-cell-high BGRA strip at (dx, dy), clipped to [clipX, clipX+clipW).</summary>
-        private void DrawCursor(byte[] pixels, int widthPx, int strideBytes, CursorState cursor, float dx, float dy,
+        /// <summary>Draw the software cursor into a BGRA strip at (dx, dy), clipped to [clipX, clipX+clipW).</summary>
+        private void DrawCursor(byte[] pixels, int widthPx, int strideBytes, int heightPx, CursorState cursor, float dx, float dy,
             int clipX = 0, int clipW = -1)
         {
             EnsureCursorBitmap(cursor.Type, cursor.Bitmap, _cellPixelWidth, _cellPixelHeight);
@@ -705,11 +817,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                 fixed (byte* p = pixels)
                 {
                     using var bitmap = new SKBitmap();
-                    bitmap.InstallPixels(new SKImageInfo(widthPx, _cellPixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul),
+                    bitmap.InstallPixels(new SKImageInfo(widthPx, heightPx, SKColorType.Bgra8888, SKAlphaType.Premul),
                         (IntPtr)p, strideBytes);
                     using var canvas = new SKCanvas(bitmap);
                     if (clipW > 0)
-                        canvas.ClipRect(new SKRect(clipX, 0, clipX + clipW, _cellPixelHeight));
+                        canvas.ClipRect(new SKRect(clipX, 0, clipX + clipW, heightPx));
                     canvas.DrawBitmap(_cursorBitmap, dx, dy);
                     canvas.Flush();
                 }
@@ -887,6 +999,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                 !IsEmpty &&
                 run.Row >= Row && run.Row < Row + Rows &&
                 run.Col < Col + Cols && Col < run.Col + run.Cols;
+
+            public bool OverlapsCells(int col, int row, int cols, int rows) =>
+                !IsEmpty &&
+                col < Col + Cols && Col < col + cols &&
+                row < Row + Rows && Row < row + rows;
         }
     }
 }

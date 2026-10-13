@@ -14,6 +14,15 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         int PixelWidth { get; }
         int PixelHeight { get; }
 
+        /// <summary>True when the terminal advertised Sixel graphics in its primary device attributes.</summary>
+        bool SixelSupported { get; }
+
+        /// <summary>True when the terminal answered the kitty graphics protocol query.</summary>
+        bool KittyGraphicsSupported { get; }
+
+        /// <summary>The protocol frames are sent with, resolved from what the terminal supports.</summary>
+        ImageProtocol Protocol { get; }
+
         /// <summary>
         ///     True when the terminal reports mouse positions in pixels (DECSET 1016, SGR-Pixels).
         ///     When false, positions are derived from the character cell grid.
@@ -57,8 +66,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         void HideCaret();
         void WriteEsc(string escape);
 
-        /// <summary>Queue a rendered sixel (the bytes of a DCS q ... ST sequence) at a cell position.</summary>
-        void WriteSixel(CellPosition position, ReadOnlySpan<byte> sixel);
+        /// <summary>
+        ///     Queue a rendered image (the bytes of a complete Sixel or kitty sequence) at a cell
+        ///     position. The cursor is positioned there first.
+        /// </summary>
+        void WriteImage(CellPosition position, ReadOnlySpan<byte> image);
 
         /// <summary>Start a frame. Output is held until <see cref="EndFrame"/> flushes it in one write.</summary>
         void BeginFrame();

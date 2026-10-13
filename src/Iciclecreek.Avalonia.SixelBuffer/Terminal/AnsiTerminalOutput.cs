@@ -78,17 +78,17 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         }
 
         /// <summary>
-        ///     Append a rendered sixel at a cell position. The cursor is always positioned
+        ///     Append a rendered image at a cell position. The cursor is always positioned
         ///     explicitly first (a pending wrap after the last column would otherwise put the
         ///     image a row off), and is treated as unknown afterwards.
         /// </summary>
-        public void WriteSixel(CellPosition position, ReadOnlySpan<byte> sixel)
+        public void WriteImage(CellPosition position, ReadOnlySpan<byte> image)
         {
             lock (_sync)
             {
                 SetCaretPositionInternal(position);
-                sixel.CopyTo(_outputBuffer.GetSpan(sixel.Length));
-                _outputBuffer.Advance(sixel.Length);
+                image.CopyTo(_outputBuffer.GetSpan(image.Length));
+                _outputBuffer.Advance(image.Length);
                 _headPosition = null;
             }
         }

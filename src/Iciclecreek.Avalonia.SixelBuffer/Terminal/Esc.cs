@@ -22,6 +22,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         public const string EnablePixelMouseTracking = "\u001b[?1016h";
         public const string DisablePixelMouseTracking = "\u001b[?1016l";
 
+        // Kitty graphics protocol. The query transmits a 1x1 RGB image (three zero bytes, "AAAA")
+        // under id 31 with a=q, which asks the terminal to answer "APC _ G i=31;OK ST" and keep
+        // nothing; terminals without the protocol ignore it. Delete-all frees every image.
+        public const string KittyQuerySupport = "\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\";
+        public const string KittyDeleteAllImages = "\u001b_Ga=d,d=A,q=2\u001b\\";
+
         // Synchronized output (DEC private mode 2026): the terminal holds the screen
         // until the end marker so a frame of many sixels paints atomically.
         public const string BeginSynchronizedUpdate = "\u001b[?2026h";

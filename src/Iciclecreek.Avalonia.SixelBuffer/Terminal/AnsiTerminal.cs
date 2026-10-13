@@ -26,6 +26,15 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         private bool _pixelMouse;
         private bool _pointerShapeSupported;
         private bool _synchronizedOutput;
+        private bool _sixelSupported;
+        private bool _kittySupported;
+        private ImageProtocol _protocol;
+
+        /// <summary>
+        ///     The protocol to use, or <see cref="ImageProtocol.Auto"/> to take kitty graphics when
+        ///     the terminal has it and Sixel otherwise. Set before <see cref="PrepareConsole"/>.
+        /// </summary>
+        public ImageProtocol PreferredProtocol { get; set; } = ImageProtocol.Auto;
         private string? _currentPointerShape;
 
         public AnsiTerminal()
@@ -52,6 +61,9 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         public bool PixelMouseSupported => _pixelMouse;
         public bool PointerShapeSupported => _pointerShapeSupported;
         public bool SynchronizedOutputSupported => _synchronizedOutput;
+        public bool SixelSupported => _sixelSupported;
+        public bool KittyGraphicsSupported => _kittySupported;
+        public ImageProtocol Protocol => _protocol;
 
         public event Action? Resized;
         public event Action<Key, char, RawInputModifiers, bool, ulong, bool>? KeyEvent;
@@ -71,7 +83,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         public void SetCaretPosition(CellPosition position) => _output.SetCaretPosition(position);
         public void HideCaret() => _output.HideCaret();
         public void WriteEsc(string escape) => _output.WriteText(escape);
-        public void WriteSixel(CellPosition position, ReadOnlySpan<byte> sixel) => _output.WriteSixel(position, sixel);
+        public void WriteImage(CellPosition position, ReadOnlySpan<byte> image) => _output.WriteImage(position, image);
         public void BeginFrame() => _output.BeginFrame();
         public void EndFrame() => _output.EndFrame();
         public void Flush() => _output.Flush();
@@ -82,6 +94,8 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             _output.PrepareConsole();
             EnableRawMode();
             DetectSixelSupport();
+            DetectKittyGraphicsSupport();
+            ResolveProtocol();
             DetectCellSize();
             DetectPixelMouseSupport();
             DetectPointerShapeSupport();
@@ -107,6 +121,10 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                 _output.WriteText(Esc.SetPointerShape("default"));
                 _currentPointerShape = null;
             }
+
+            // Free the terminal's copy of every block we sent
+            if (_protocol == ImageProtocol.Kitty)
+                _output.WriteText(Esc.KittyDeleteAllImages);
 
             _output.WriteText(Esc.DisableAllMouseEvents);
             if (_pixelMouse)
@@ -134,20 +152,53 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             // Param 4 = Sixel graphics supported.
             string response = RequestAnsiResponse(Esc.QueryPrimaryDeviceAttributes, 'c', 500);
 
-            // Parse: look for "?<params>c" — param 4 means Sixel
+            _sixelSupported = false;
             int qIdx = response.IndexOf('?');
             if (qIdx >= 0 && response.EndsWith('c'))
             {
                 string inner = response[(qIdx + 1)..^1];
                 var supported = inner.Split(';', StringSplitOptions.RemoveEmptyEntries);
-                if (Array.Exists(supported, p => p == "4"))
-                    return; // Sixel is supported
+                _sixelSupported = Array.Exists(supported, p => p == "4");
             }
 
-            throw new NotSupportedException(
-                "This terminal does not support Sixel graphics. " +
-                "Use a Sixel-capable terminal such as Windows Terminal, WezTerm, iTerm2, or foot. " +
-                "See https://www.arewesixelyet.com/ for a list of compatible terminals.");
+            Debug.WriteLine($"[Output] Sixel supported: {_sixelSupported}");
+        }
+
+        private void DetectKittyGraphicsSupport()
+        {
+            // Query: APC _ G i=31,s=1,v=1,a=q,t=d,f=24 ; AAAA ST
+            // Reply: APC _ G i=31;OK ST  (or an error after i=31; either way the protocol exists).
+            // Terminals without the protocol ignore the APC and the read times out.
+            string response = RequestAnsiResponse(Esc.KittyQuerySupport, '\\', 200);
+            _kittySupported = response.Contains("_Gi=31;OK", StringComparison.Ordinal);
+            Debug.WriteLine($"[Output] Kitty graphics supported: {_kittySupported}");
+        }
+
+        /// <summary>Pick the protocol from what the terminal has and what the app asked for.</summary>
+        private void ResolveProtocol()
+        {
+            _protocol = PreferredProtocol switch
+            {
+                ImageProtocol.Kitty when _kittySupported => ImageProtocol.Kitty,
+                ImageProtocol.Sixel when _sixelSupported => ImageProtocol.Sixel,
+                ImageProtocol.Auto when _kittySupported => ImageProtocol.Kitty,
+                ImageProtocol.Auto when _sixelSupported => ImageProtocol.Sixel,
+                _ => throw new NotSupportedException(
+                    PreferredProtocol switch
+                    {
+                        ImageProtocol.Kitty => "This terminal does not support the kitty graphics protocol. " +
+                                               "Use a kitty-capable terminal such as kitty, WezTerm, Ghostty, or Konsole, " +
+                                               "or let the protocol be chosen automatically.",
+                        ImageProtocol.Sixel => "This terminal does not support Sixel graphics. " +
+                                               "Use a Sixel-capable terminal such as Windows Terminal, WezTerm, iTerm2, or foot. " +
+                                               "See https://www.arewesixelyet.com/ for a list of compatible terminals.",
+                        _ => "This terminal supports neither Sixel nor kitty graphics. " +
+                             "Use a terminal such as Windows Terminal, WezTerm, kitty, Ghostty, iTerm2, or foot. " +
+                             "See https://www.arewesixelyet.com/ for a list of compatible terminals."
+                    })
+            };
+
+            Debug.WriteLine($"[Output] Image protocol: {_protocol}");
         }
 
         #endregion
