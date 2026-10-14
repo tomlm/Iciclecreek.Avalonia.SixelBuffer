@@ -66,8 +66,7 @@ Read once at startup; each overrides a default without a rebuild.
 | `SIXELBUFFER_FPS` | a number | Render rate, overriding `UseSixelBuffer(fps: …)` (default 60). |
 
 ## Notes
-- **Terminal compatibility** -- Your terminal must support Sixel graphics. Tested with Windows Terminal, WezTerm, 
-- **Render rate** -- The render timer runs at 60 FPS by default, the rate Avalonia renders at on a typical desktop display; pass `fps` to `UseSixelBuffer(fps: …)` or set `SIXELBUFFER_FPS` to change it. Only changed cells are sent, so an idle app costs nothing at any rate. Input is drained ahead of rendering, so a higher rate does not starve it; what a higher rate costs is bytes to the terminal while things move.
+- **Terminal compatibility** -- Your terminal must support Sixel or kitty graphics. Tested with Windows Terminal, WezTerm, 
 - **No native Menus** -- Don't use NativeMenu/NativeMenuItem as they won't work in terminal mode. Use Avalonia's Menu control instead.
 - **No native popups** -- Popups and dropdown overlays are managed within the single terminal frame rather than as separate OS windows.
 - **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.2).
