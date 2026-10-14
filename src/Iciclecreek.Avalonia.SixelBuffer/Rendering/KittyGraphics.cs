@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Text.Unicode;
+using SkiaSharp;
 
 namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
@@ -22,20 +23,22 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         private const int RawChunkSize = MaxChunkBase64 / 4 * 3;
 
         /// <summary>
-        ///     Write the transmit-and-display command(s) for an RGB image compressed with zlib.
-        ///     q=2 asks for no reply, C=1 leaves the cursor where it is: the caller positions it
-        ///     before the image and the terminal does not answer every block of a frame.
+        ///     Write the transmit-and-display command(s) for an image: PNG (f=100) or RGB
+        ///     compressed with zlib (f=24, o=z). q=2 asks for no reply, C=1 leaves the cursor
+        ///     where it is: the caller positions it before the image and the terminal does not
+        ///     answer every block of a frame.
         /// </summary>
-        public static void WriteTransmit(IBufferWriter<byte> output, int imageId, int width, int height, ReadOnlySpan<byte> zlibRgb)
+        public static void WriteTransmit(IBufferWriter<byte> output, int imageId, int width, int height,
+            ReadOnlySpan<byte> payload, bool png)
         {
-            if (zlibRgb.Length == 0) return;
+            if (payload.Length == 0) return;
 
             int offset = 0;
             bool first = true;
-            while (offset < zlibRgb.Length)
+            while (offset < payload.Length)
             {
-                int chunk = Math.Min(RawChunkSize, zlibRgb.Length - offset);
-                bool last = offset + chunk >= zlibRgb.Length;
+                int chunk = Math.Min(RawChunkSize, payload.Length - offset);
+                bool last = offset + chunk >= payload.Length;
 
                 Span<byte> span = output.GetSpan(96 + (chunk + 2) / 3 * 4 + 8);
                 int pos = 0;
@@ -44,8 +47,13 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
                 if (first)
                 {
-                    Utf8.TryWrite(span[pos..], CultureInfo.InvariantCulture,
-                        $"a=T,f=24,o=z,q=2,C=1,i={imageId},s={width},v={height},", out int headerLength);
+                    int headerLength;
+                    if (png)
+                        Utf8.TryWrite(span[pos..], CultureInfo.InvariantCulture,
+                            $"a=T,f=100,q=2,C=1,i={imageId},", out headerLength);
+                    else
+                        Utf8.TryWrite(span[pos..], CultureInfo.InvariantCulture,
+                            $"a=T,f=24,o=z,q=2,C=1,i={imageId},s={width},v={height},", out headerLength);
                     pos += headerLength;
                     first = false;
                 }
@@ -53,7 +61,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                 (last ? "m=0;"u8 : "m=1;"u8).CopyTo(span[pos..]);
                 pos += 4;
 
-                Base64.EncodeToUtf8(zlibRgb.Slice(offset, chunk), span[pos..], out _, out int encoded);
+                Base64.EncodeToUtf8(payload.Slice(offset, chunk), span[pos..], out _, out int encoded);
                 pos += encoded;
 
                 "\u001b\\"u8.CopyTo(span[pos..]);
@@ -61,6 +69,26 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
                 output.Advance(pos);
                 offset += chunk;
+            }
+        }
+
+        /// <summary>
+        ///     Encode a BGRA block as PNG through Skia. About half the bytes of zlib RGB on
+        ///     pictures, at more encode time per block.
+        /// </summary>
+        public static byte[] EncodePng(ReadOnlySpan<byte> bgra, int width, int height)
+        {
+            unsafe
+            {
+                fixed (byte* p = bgra)
+                {
+                    using var bitmap = new SKBitmap();
+                    bitmap.InstallPixels(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul),
+                        (IntPtr)p, width * 4);
+                    using SKImage image = SKImage.FromBitmap(bitmap);
+                    using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);
+                    return data.ToArray();
+                }
             }
         }
 

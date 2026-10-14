@@ -74,6 +74,10 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         // its position. A changed block is sent again under its id, which replaces it in place.
         private const int BlockCols = 8;
         private const int BlockRows = 4;
+        // Blocks go as PNG unless FRAMEBUFFER_KITTY_FORMAT=rgb asks for zlib RGB (faster to
+        // encode, larger on pictures).
+        private static readonly bool KittyPng =
+            !string.Equals(Environment.GetEnvironmentVariable("FRAMEBUFFER_KITTY_FORMAT"), "rgb", StringComparison.OrdinalIgnoreCase);
         private byte[]? _blockPixels;
         private byte[]? _blockRgb;
         private readonly MemoryStream _zlibScratch = new();
@@ -767,14 +771,16 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
                         if (payload == null)
                         {
-                            payload = KittyGraphics.CompressRgb(block.AsSpan(0, blockBytes), w, h, ref _blockRgb, _zlibScratch);
+                            payload = KittyPng
+                                ? KittyGraphics.EncodePng(block.AsSpan(0, blockBytes), w, h)
+                                : KittyGraphics.CompressRgb(block.AsSpan(0, blockBytes), w, h, ref _blockRgb, _zlibScratch);
                             if (!touchesCursor)
                                 _runCache.Add(key, payload);
                         }
 
                         int imageId = by * blockCols + bx + 1;
                         _runWriter.ResetWrittenCount();
-                        KittyGraphics.WriteTransmit(_runWriter, imageId, w, h, payload);
+                        KittyGraphics.WriteTransmit(_runWriter, imageId, w, h, payload, KittyPng);
                         _terminal.WriteImage(new CellPosition((ushort)c0, (ushort)r0), _runWriter.WrittenSpan);
                     }
                 }
