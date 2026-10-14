@@ -107,6 +107,10 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             _output.WriteText(Esc.EnableExtendedMouseTracking);
             if (_pixelMouse)
                 _output.WriteText(Esc.EnablePixelMouseTracking);
+
+            // Asked unconditionally: a terminal without mode 2048 ignores it, and one with it
+            // answers at once and again on every change of the text area -- see ApplyInBandResize.
+            _output.WriteText(Esc.EnableInBandResize);
             _output.Flush();
 
             StartSizeCheckTimer();
@@ -126,6 +130,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             if (_protocol == ImageProtocol.Kitty)
                 _output.WriteText(Esc.KittyDeleteAllImages);
 
+            _output.WriteText(Esc.DisableInBandResize);
             _output.WriteText(Esc.DisableAllMouseEvents);
             if (_pixelMouse)
                 _output.WriteText(Esc.DisablePixelMouseTracking);
@@ -411,6 +416,41 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                     await Task.Delay(timeout);
                 }
             });
+        }
+
+        /// <summary>
+        ///     Takes the geometry of an in-band resize report (mode 2048). UI thread.
+        /// </summary>
+        /// <remarks>
+        ///     The cell size is the part nothing else can tell us. Dragging the window to a monitor
+        ///     with another DPI, or changing the terminal's font, changes how many pixels a cell is
+        ///     while the grid can stay the same -- and every frame drawn at the old cell size then
+        ///     lands in the terminal at the wrong scale: kitty blocks shrank into a grid of gaps.
+        ///     <see cref="Resized"/> is raised even when the grid did not change, so the window takes
+        ///     its new pixel size and the render target redraws everything at the new cell size.
+        ///     A report with no pixel size (a terminal that does not know it) changes only the grid.
+        /// </remarks>
+        private void ApplyInBandResize(int rows, int cols, int heightPx, int widthPx)
+        {
+            if (rows <= 0 || cols <= 0)
+                return;
+
+            int cellW = widthPx > 0 ? widthPx / cols : _output.CellPixelWidth;
+            int cellH = heightPx > 0 ? heightPx / rows : _output.CellPixelHeight;
+            if (cellW <= 0 || cellH <= 0)
+                return;
+
+            bool cellChanged = cellW != _output.CellPixelWidth || cellH != _output.CellPixelHeight;
+            _output.CellPixelWidth = cellW;
+            _output.CellPixelHeight = cellH;
+            _output.PixelWidth = cols * cellW;
+            _output.PixelHeight = rows * cellH;
+
+            var size = new TerminalSize((ushort)cols, (ushort)rows);
+            if (Size != size)
+                Size = size; // raises Resized
+            else if (cellChanged)
+                Resized?.Invoke();
         }
 
         /// <summary>
@@ -714,6 +754,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
                         };
                         if (key != Key.None) RaiseKey(key, '\0', mods);
                     }
+                    return totalLen;
+                case (byte)'t' when parts.Length == 5 && parts[0] == "48":
+                    // In-band resize report (mode 2048): rows ; cols ; height px ; width px
+                    if (int.TryParse(parts[1], out int reportRows) && int.TryParse(parts[2], out int reportCols) &&
+                        int.TryParse(parts[3], out int heightPx) && int.TryParse(parts[4], out int widthPx))
+                        Enqueue(() => ApplyInBandResize(reportRows, reportCols, heightPx, widthPx));
                     return totalLen;
                 case (byte)'I': // Focus in
                     Enqueue(() => FocusEvent?.Invoke(true));

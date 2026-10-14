@@ -33,8 +33,12 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         private readonly ITerminal _terminal;
         private readonly IPlatformRenderInterface _fallbackRenderInterface;
         private readonly IPlatformRenderInterfaceContext _fallbackContext;
-        private readonly int _cellPixelWidth;
-        private readonly int _cellPixelHeight;
+        // Render thread. A cell-size change arrives through OnResized on the UI thread and is
+        // taken up here at the start of the next frame, never in the middle of one.
+        private int _cellPixelWidth;
+        private int _cellPixelHeight;
+        private volatile int _pendingCellPixelWidth;
+        private volatile int _pendingCellPixelHeight;
         private IDrawingContextLayerImpl _innerTarget;
         private volatile bool _disposed;
 
@@ -294,6 +298,16 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 
         private void RenderFrame(byte[] frame, int width, int height, CursorState cursor)
         {
+            // A new cell size (another DPI, another font) comes with a full redraw, which OnResized
+            // has already asked for: nothing drawn at the old size may survive it.
+            int pendingWidth = _pendingCellPixelWidth;
+            if (pendingWidth > 0)
+            {
+                _cellPixelHeight = _pendingCellPixelHeight;
+                _cellPixelWidth = pendingWidth;
+                _pendingCellPixelWidth = 0;
+            }
+
             GetVisibleCells(width, height, out int cols, out int rows);
             EnsureMask(cols, rows);
 
@@ -968,6 +982,15 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             // The clear is done by the render thread as part of the next full frame. Issued
             // from here it could land in the middle of a frame being written, erasing cells
             // that had just been painted and would not be painted again until they change.
+            if (_terminal.CellPixelWidth > 0 && _terminal.CellPixelHeight > 0 &&
+                (_terminal.CellPixelWidth != _cellPixelWidth || _terminal.CellPixelHeight != _cellPixelHeight))
+            {
+                // Height first: the render thread takes the width as the signal and reads the
+                // height after it.
+                _pendingCellPixelHeight = _terminal.CellPixelHeight;
+                _pendingCellPixelWidth = _terminal.CellPixelWidth;
+            }
+
             _clearPending = true;
             _fullRedraw = true;
         }

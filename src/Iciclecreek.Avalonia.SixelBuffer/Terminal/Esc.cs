@@ -22,6 +22,13 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
         public const string EnablePixelMouseTracking = "\u001b[?1016h";
         public const string DisablePixelMouseTracking = "\u001b[?1016l";
 
+        // In-band resize reports (DEC private mode 2048): the terminal sends
+        // CSI 48 ; rows ; cols ; height px ; width px t whenever the text area changes -- including
+        // when only its PIXEL size does, a font change or a move to a monitor with another DPI,
+        // which neither SIGWINCH on Windows nor a cols/rows poll can see.
+        public const string EnableInBandResize = "\u001b[?2048h";
+        public const string DisableInBandResize = "\u001b[?2048l";
+
         // Kitty graphics protocol. The query transmits a 1x1 RGB image (three zero bytes, "AAAA")
         // under id 31 with a=q, which asks the terminal to answer "APC _ G i=31;OK ST" and keep
         // nothing; terminals without the protocol ignore it. Delete-all frees every image.
