@@ -18,7 +18,7 @@ Iciclecreek.Avalonia.SixelBuffer replaces Avalonia's native windowing platform w
 - **Frame diffing** -- Each frame is compared cell by cell with what the terminal shows. Only changed cells are sent, as one Sixel per horizontal run of changed cells, with SIMD-optimized sixel band construction. Runs the terminal has already been sent replay from a content-keyed cache (a closed popup or a reverted hover costs no re-encoding), and each frame goes out as a single write inside a DEC 2026 synchronized update where the terminal supports it.
 - **Mouse pointer** -- At startup the library queries the terminal for OSC 22 pointer shape support (the kitty pointer-shapes protocol). When supported, Avalonia cursor changes are passed through to the terminal's native mouse pointer. Otherwise a composited software cursor is drawn into the frame.
 
-Requires a terminal emulator with Sixel or kitty graphics, such as Windows Terminal, WezTerm, kitty, Ghostty, iTerm2, or foot. See https://www.arewesixelyet.com/ for a list of Sixel-capable terminals.
+Requires a terminal emulator with Sixel or kitty graphics, such as Iciclecreek.Avalonia.Terminal, Windows Terminal, WezTerm, kitty, Ghostty, iTerm2, or foot. See https://www.arewesixelyet.com/ for a list of Sixel-capable terminals.
 
 ## Install
 
@@ -66,7 +66,7 @@ Read once at startup; each overrides a default without a rebuild.
 | `SIXELBUFFER_FPS` | a number | Render rate, overriding `UseSixelBuffer(fps: …)` (default 60). |
 
 ## Notes
-- **Terminal compatibility** -- Your terminal must support Sixel or kitty graphics. Tested with Windows Terminal, WezTerm, 
+- **Terminal compatibility** -- Your terminal must support Sixel or kitty graphics. Tested with Windows Terminal, WezTerm, konsole, Iciclecreek.Avalonia.Terminal avalonia control
 - **No native Menus** -- Don't use NativeMenu/NativeMenuItem as they won't work in terminal mode. Use Avalonia's Menu control instead.
 - **No native popups** -- Popups and dropdown overlays are managed within the single terminal frame rather than as separate OS windows.
 - **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.2).
