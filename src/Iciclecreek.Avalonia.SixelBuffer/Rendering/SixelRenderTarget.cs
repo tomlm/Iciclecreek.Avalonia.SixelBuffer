@@ -74,10 +74,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         // its position. A changed block is sent again under its id, which replaces it in place.
         private const int BlockCols = 8;
         private const int BlockRows = 4;
-        // Blocks go as PNG unless FRAMEBUFFER_KITTY_FORMAT=rgb asks for zlib RGB (faster to
-        // encode, larger on pictures).
+        // Blocks go as zlib RGB unless FRAMEBUFFER_KITTY_FORMAT=png asks for PNG. Measured on
+        // 64x64 blocks, PNG through Skia was 5-8x slower to encode and no smaller: a text block
+        // was 1.4 KB zlib against 1.7 KB PNG, a noisy one 12 KB against 14.6 KB.
         private static readonly bool KittyPng =
-            !string.Equals(Environment.GetEnvironmentVariable("FRAMEBUFFER_KITTY_FORMAT"), "rgb", StringComparison.OrdinalIgnoreCase);
+            string.Equals(Environment.GetEnvironmentVariable("FRAMEBUFFER_KITTY_FORMAT"), "png", StringComparison.OrdinalIgnoreCase);
         private byte[]? _blockPixels;
         private byte[]? _blockRgb;
         private readonly MemoryStream _zlibScratch = new();
