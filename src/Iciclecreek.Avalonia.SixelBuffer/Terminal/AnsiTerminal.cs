@@ -174,9 +174,21 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Terminal
             Debug.WriteLine($"[Output] Kitty graphics supported: {_kittySupported}");
         }
 
-        /// <summary>Pick the protocol from what the terminal has and what the app asked for.</summary>
+        /// <summary>
+        ///     Pick the protocol from what the terminal has and what the app asked for.
+        ///     FRAMEBUFFER_GRAPHICS=sixel or FRAMEBUFFER_GRAPHICS=kitty in the environment
+        ///     overrides the app's choice, so either path can be forced for testing.
+        /// </summary>
         private void ResolveProtocol()
         {
+            string? forced = Environment.GetEnvironmentVariable("FRAMEBUFFER_GRAPHICS");
+            if (string.Equals(forced, "sixel", StringComparison.OrdinalIgnoreCase))
+                PreferredProtocol = ImageProtocol.Sixel;
+            else if (string.Equals(forced, "kitty", StringComparison.OrdinalIgnoreCase))
+                PreferredProtocol = ImageProtocol.Kitty;
+            else if (!string.IsNullOrEmpty(forced))
+                Debug.WriteLine($"[Output] FRAMEBUFFER_GRAPHICS={forced} is not 'sixel' or 'kitty'; ignored");
+
             _protocol = PreferredProtocol switch
             {
                 ImageProtocol.Kitty when _kittySupported => ImageProtocol.Kitty,
