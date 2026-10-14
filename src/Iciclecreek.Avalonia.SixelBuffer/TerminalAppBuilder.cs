@@ -13,13 +13,13 @@ namespace Iciclecreek.Avalonia.SixelBuffer
         ///     Configure Avalonia to render to a terminal using Sixel or kitty graphics.
         /// </summary>
         /// <param name="builder">The app builder.</param>
-        /// <param name="fps">Render frames per second (default 30). Only frames with something
+        /// <param name="fps">Render frames per second (default 60, Avalonia's usual desktop rate). Only frames with something
         /// changed are sent, so an idle app costs nothing at any rate; higher rates give smoother
         /// scrolling and animation at the price of more bytes to the terminal while things move.
         /// The <c>SIXELBUFFER_FPS</c> environment variable overrides it.</param>
         /// <param name="protocol">The image protocol to use. <see cref="ImageProtocol.Auto"/> takes
         /// kitty graphics when the terminal answers the kitty query and Sixel otherwise.</param>
-        public static AppBuilder UseSixelBuffer(this AppBuilder builder, int fps = 30,
+        public static AppBuilder UseSixelBuffer(this AppBuilder builder, int fps = 60,
             ImageProtocol protocol = ImageProtocol.Auto)
         {
             // SIXELBUFFER_FPS overrides the rate without a rebuild, for trying rates against a
