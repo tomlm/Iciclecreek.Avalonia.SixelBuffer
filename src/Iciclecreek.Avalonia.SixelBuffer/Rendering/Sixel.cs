@@ -1,7 +1,6 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -11,19 +10,18 @@ using JeremyAnsel.ColorQuant;
 namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
 {
     /// <summary>
-    ///     Represents a sixel image with palette and indexed pixel data.
-    ///     Supports composition via BitBlt and serialization via Render.
+    ///     A sixel image: a palette plus one palette index per pixel. Serialized with
+    ///     <see cref="RenderTo"/>, which defines only the colors the image actually uses.
     /// </summary>
-    public class Sixel
+    public sealed class Sixel
     {
+        /// <summary>Palette as BGRX, 4 bytes per entry.</summary>
         [SuppressMessage("Performance", "CA1819:Properties should not return arrays")]
         public byte[] Palette { get; }
 
         public int PaletteCount { get; }
 
-        /// <summary>How many palette entries are frequency-reserved (first N slots).</summary>
-        public int ReservedCount { get; }
-
+        /// <summary>One palette index per pixel, row-major. May be longer than Width*Height (pooled).</summary>
         [SuppressMessage("Performance", "CA1819:Properties should not return arrays")]
         public byte[] Pixels { get; }
 
@@ -34,12 +32,18 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         public int CellsWidth => Width / CellWidth;
         public int CellsHeight => Height / CellHeight;
 
-        public Sixel(byte[] palette, int paletteCount, int reservedCount, byte[] pixels, int width, int height,
+        public Sixel(byte[] palette, int paletteCount, byte[] pixels, int width, int height,
             int cellWidth, int cellHeight)
         {
+            ArgumentNullException.ThrowIfNull(palette);
+            ArgumentNullException.ThrowIfNull(pixels);
+            if (paletteCount < 0 || paletteCount > 256 || palette.Length < paletteCount * 4)
+                throw new ArgumentOutOfRangeException(nameof(paletteCount));
+            if (width < 0 || height < 0 || pixels.Length < width * height)
+                throw new ArgumentOutOfRangeException(nameof(pixels));
+
             Palette = palette;
             PaletteCount = paletteCount;
-            ReservedCount = reservedCount;
             Pixels = pixels;
             Width = width;
             Height = height;
@@ -47,324 +51,260 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
             CellHeight = cellHeight;
         }
 
-        public static Sixel CreateFromBitmap(byte[] bgrx, int width, int height,
-            int cellWidth, int cellHeight, byte[]? palette = null, int reservedCount = 0)
+        /// <summary>Quantize a BGRX image and wrap it as a sixel.</summary>
+        public static Sixel CreateFromBitmap(byte[] bgrx, int width, int height, int cellWidth, int cellHeight)
         {
-            // Only consider the visible pixels (width * height), not the full buffer
+            ArgumentNullException.ThrowIfNull(bgrx);
             int pixelCount = width * height;
-            if (palette != null)
+            byte[] indexed = GC.AllocateUninitializedArray<byte>(pixelCount);
+            Quantize(bgrx, pixelCount, indexed, out byte[] palette, out int paletteCount);
+            return new Sixel(palette, paletteCount, indexed, width, height, cellWidth, cellHeight);
+        }
+
+        #region Quantization
+
+        [ThreadStatic] private static WuColorQuantizer? _quantizer;
+        [ThreadStatic] private static Dictionary<uint, byte>? _exactMap;
+        [ThreadStatic] private static byte[]? _wuInput;
+
+        /// <summary>
+        ///     Quantize <paramref name="pixelCount"/> BGRX pixels to at most 256 colors, writing one
+        ///     index per pixel into <paramref name="indexed"/>. Images with 256 or fewer distinct
+        ///     colors are indexed exactly; anything else goes through Wu's quantizer.
+        /// </summary>
+        /// <remarks>
+        ///     Wu has a large fixed cost however few pixels it is given, while the cells a UI change
+        ///     touches hold a handful of flat colors. Exact indexing is cheaper for them and loses nothing.
+        /// </remarks>
+        public static bool Quantize(byte[] bgrx, int pixelCount, byte[] indexed,
+            out byte[] palette, out int paletteCount)
+        {
+            if (TryQuantizeExact(bgrx, pixelCount, indexed, out palette, out paletteCount))
+                return true;
+            QuantizeWu(bgrx, pixelCount, indexed, out palette, out paletteCount);
+            return false;
+        }
+
+        /// <summary>
+        ///     Index the pixels exactly when they hold 256 or fewer distinct colors. Returns
+        ///     false, leaving <paramref name="indexed"/> unusable, as soon as a 257th color appears.
+        /// </summary>
+        public static bool TryQuantizeExact(byte[] bgrx, int pixelCount, byte[] indexed,
+            out byte[] palette, out int paletteCount)
+        {
+            Validate(bgrx, pixelCount, indexed);
+            return TryIndexExactly(bgrx, pixelCount, indexed, out palette, out paletteCount);
+        }
+
+        /// <summary>
+        ///     Quantize to at most 256 colors with Wu's algorithm. Handles any number of colors,
+        ///     at a large fixed cost that does not shrink with the image.
+        /// </summary>
+        public static void QuantizeWu(byte[] bgrx, int pixelCount, byte[] indexed,
+            out byte[] palette, out int paletteCount)
+        {
+            Validate(bgrx, pixelCount, indexed);
+
+            // Wu reads the whole array it is given, so hand it exactly pixelCount pixels.
+            byte[] input;
+            if (bgrx.Length == pixelCount * 4)
             {
-                int paletteCount = palette.Length / 4;
-                byte[] indexed = QuantizeWithPalette(bgrx, palette, paletteCount, pixelCount, reservedCount);
-                return new Sixel(palette, paletteCount, reservedCount, indexed, width, height, cellWidth, cellHeight);
+                input = bgrx;
             }
             else
             {
-                Quantize(bgrx, pixelCount, out byte[] newPalette, out int paletteCount,
-                    out int newReservedCount, out byte[] indexed);
-                return new Sixel(newPalette, paletteCount, newReservedCount, indexed,
-                    width, height, cellWidth, cellHeight);
+                if (_wuInput == null || _wuInput.Length != pixelCount * 4)
+                    _wuInput = GC.AllocateUninitializedArray<byte>(pixelCount * 4);
+                input = _wuInput;
+                Buffer.BlockCopy(bgrx, 0, input, 0, pixelCount * 4);
             }
+
+            WuColorQuantizer quantizer = _quantizer ??= new WuColorQuantizer();
+            ColorQuantizerResult result = quantizer.Quantize(input, 256);
+            palette = result.Palette;
+            paletteCount = palette.Length / 4;
+            Buffer.BlockCopy(result.Bytes, 0, indexed, 0, pixelCount);
         }
 
-        /// <summary>
-        ///     Quantize a frame and return only the palette (for palette refresh comparison).
-        /// </summary>
-        public static (byte[] palette, int count) QuantizeForPalette(byte[] bgrx, int pixelCount = 0)
+        private static void Validate(byte[] bgrx, int pixelCount, byte[] indexed)
         {
-            if (pixelCount == 0) pixelCount = bgrx.Length / 4;
-            Quantize(bgrx, pixelCount, out byte[] palette, out int count, out _, out _);
-            return (palette, count);
+            ArgumentNullException.ThrowIfNull(bgrx);
+            ArgumentNullException.ThrowIfNull(indexed);
+            if (bgrx.Length < pixelCount * 4 || indexed.Length < pixelCount)
+                throw new ArgumentOutOfRangeException(nameof(pixelCount));
         }
 
-        /// <summary>
-        ///     Returns a copy of this Sixel with reserved palette entries replaced by green.
-        ///     Does not modify the original.
-        /// </summary>
-        internal Sixel CreateDebugCopy()
+        private static bool TryIndexExactly(byte[] bgrx, int pixelCount, byte[] indexed,
+            out byte[] palette, out int paletteCount)
         {
-            Debug.Print($"RESERVEDCOUNT={ReservedCount}");
-            byte[] debugPalette = new byte[Palette.Length];
-            Array.Copy(Palette, debugPalette, Palette.Length);
-            for (int i = 0; i < ReservedCount; i++)
+            Dictionary<uint, byte> map = _exactMap ??= new Dictionary<uint, byte>(256);
+            map.Clear();
+
+            uint lastColor = 0;
+            byte lastIndex = 0;
+            bool haveLast = false;
+
+            ref byte src = ref MemoryMarshal.GetArrayDataReference(bgrx);
+            for (int i = 0, off = 0; i < pixelCount; i++, off += 4)
             {
-                debugPalette[i * 4] = 0;       // B
-                debugPalette[i * 4 + 1] = 255;  // G
-                debugPalette[i * 4 + 2] = 0;    // R
-                debugPalette[i * 4 + 3] = 0;
-            }
-            return new Sixel(debugPalette, PaletteCount, ReservedCount, Pixels,
-                Width, Height, CellWidth, CellHeight);
-        }
+                uint color = Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref src, off)) & 0x00FFFFFFu;
+                if (haveLast && color == lastColor)
+                {
+                    indexed[i] = lastIndex;
+                    continue;
+                }
 
-        public void BitBlt(Sixel source, int x, int y)
-        {
-            for (int row = 0; row < source.Height; row++)
+                if (!map.TryGetValue(color, out byte index))
+                {
+                    if (map.Count == 256)
+                    {
+                        palette = Array.Empty<byte>();
+                        paletteCount = 0;
+                        return false;
+                    }
+
+                    index = (byte)map.Count;
+                    map.Add(color, index);
+                }
+
+                indexed[i] = index;
+                lastColor = color;
+                lastIndex = index;
+                haveLast = true;
+            }
+
+            paletteCount = map.Count;
+            palette = new byte[paletteCount * 4];
+            foreach (KeyValuePair<uint, byte> entry in map)
             {
-                int destY = y + row;
-                if (destY < 0) continue;
-                if (destY >= Height) break;
-
-                int srcOffset = row * source.Width;
-                int dstOffset = destY * Width + x;
-                int srcX = 0;
-                int dstX = x;
-
-                if (dstX < 0) { srcX = -dstX; dstX = 0; dstOffset = destY * Width; }
-
-                int copyLen = Math.Min(source.Width - srcX, Width - dstX);
-                if (copyLen <= 0) continue;
-
-                Array.Copy(source.Pixels, srcOffset + srcX, Pixels, dstOffset, copyLen);
+                int po = entry.Value * 4;
+                palette[po] = (byte)entry.Key;
+                palette[po + 1] = (byte)(entry.Key >> 8);
+                palette[po + 2] = (byte)(entry.Key >> 16);
+                palette[po + 3] = 0xFF;
             }
 
-            _renderedBytes = null;
+            return true;
         }
+
+        #endregion
 
         #region Serialization
 
-        [ThreadStatic] private static byte[]? _scratchRenderBuf;
-        [ThreadStatic] private static WuColorQuantizer? _quantizer;
-        private static readonly ConditionalWeakTable<byte[], PaletteLookup> PaletteLookups = new();
+        [ThreadStatic] private static byte[]? _usedScratch;
+        [ThreadStatic] private static byte[]? _rowScratch;
         private byte[]? _renderedBytes;
 
+        /// <summary>Render to a fresh array (cached on this instance). Prefer <see cref="RenderTo"/>.</summary>
         public ReadOnlySpan<byte> Render()
         {
             if (_renderedBytes != null) return _renderedBytes;
+            var writer = new ArrayBufferWriter<byte>(4096);
+            RenderTo(writer);
+            _renderedBytes = writer.WrittenSpan.ToArray();
+            return _renderedBytes;
+        }
+
+        /// <summary>
+        ///     Write the DCS sixel sequence for this image into <paramref name="output"/>.
+        ///     Only palette entries that appear in the pixels are defined.
+        /// </summary>
+        public void RenderTo(IBufferWriter<byte> output)
+        {
+            ArgumentNullException.ThrowIfNull(output);
 
             int width = Width;
             int height = Height;
             byte[] palette = Palette;
             int paletteCount = PaletteCount;
             byte[] indexed = Pixels;
+            int pixelCount = width * height;
 
-            int maxOutput = 64 + paletteCount * 20 + width * ((height + 5) / 6) * 4 + 4096;
-            var output = RentOrGrow(ref _scratchRenderBuf, maxOutput);
-            int pos = 0;
-
-            // DCS q
-            output[pos++] = 0x1B; output[pos++] = (byte)'P'; output[pos++] = (byte)'q';
-
-            // Raster attributes
-            output[pos++] = (byte)'"'; output[pos++] = (byte)'1'; output[pos++] = (byte)';';
-            output[pos++] = (byte)'1'; output[pos++] = (byte)';';
-            pos = WriteIntBuf(output, pos, width);
-            output[pos++] = (byte)';';
-            pos = WriteIntBuf(output, pos, height);
-
-            // Palette
-            for (int i = 0; i < paletteCount; i++)
+            // Which palette entries are used anywhere in the image
+            byte[] used = _usedScratch ??= new byte[256];
+            Array.Clear(used, 0, 256);
+            int usedCount = 0;
+            ref byte idxRef = ref MemoryMarshal.GetArrayDataReference(indexed);
+            for (int i = 0; i < pixelCount; i++)
             {
-                int r = palette[i * 4 + 2] * 100 / 255;
-                int g = palette[i * 4 + 1] * 100 / 255;
-                int b = palette[i * 4] * 100 / 255;
-                output[pos++] = (byte)'#'; pos = WriteIntBuf(output, pos, i);
-                output[pos++] = (byte)';'; output[pos++] = (byte)'2'; output[pos++] = (byte)';';
-                pos = WriteIntBuf(output, pos, r); output[pos++] = (byte)';';
-                pos = WriteIntBuf(output, pos, g); output[pos++] = (byte)';';
-                pos = WriteIntBuf(output, pos, b);
+                byte c = Unsafe.Add(ref idxRef, i);
+                if (used[c] == 0) { used[c] = 1; usedCount++; }
             }
 
-            // Bands
-            int bandCount = (height + 5) / 6;
-            Span<bool> colorPresent = stackalloc bool[paletteCount];
-            var sixelRow = ArrayPool<byte>.Shared.Rent(width);
-
-            try
+            // Header + palette definitions
             {
-                for (int band = 0; band < bandCount; band++)
+                Span<byte> span = output.GetSpan(16 + usedCount * 20 + 24);
+                int pos = 0;
+                span[pos++] = 0x1B; span[pos++] = (byte)'P'; span[pos++] = (byte)'q';
+                span[pos++] = (byte)'"'; span[pos++] = (byte)'1'; span[pos++] = (byte)';';
+                span[pos++] = (byte)'1'; span[pos++] = (byte)';';
+                pos = WriteInt(span, pos, width);
+                span[pos++] = (byte)';';
+                pos = WriteInt(span, pos, height);
+
+                for (int i = 0; i < paletteCount; i++)
                 {
-                    int yStart = band * 6;
-                    int bandRows = Math.Min(6, height - yStart);
-
-                    colorPresent.Clear();
-                    for (int row = 0; row < bandRows; row++)
-                    {
-                        int rowOff = (yStart + row) * width;
-                        for (int x = 0; x < width; x++)
-                            colorPresent[indexed[rowOff + x]] = true;
-                    }
-
-                    int bandWorstCase = paletteCount * (width + 20);
-                    if (pos + bandWorstCase > output.Length)
-                    {
-                        int newLen = Math.Max(output.Length * 2, pos + bandWorstCase + 4096);
-                        var newBuf = new byte[newLen];
-                        output.AsSpan(0, pos).CopyTo(newBuf);
-                        _scratchRenderBuf = newBuf;
-                        output = newBuf;
-                    }
-
-                    bool anyColor = false;
-                    for (int color = 0; color < paletteCount; color++)
-                    {
-                        if (!colorPresent[color]) continue;
-                        BuildSixelRow(indexed, sixelRow, width, yStart, bandRows, (byte)color);
-                        if (anyColor) output[pos++] = (byte)'$';
-                        output[pos++] = (byte)'#'; pos = WriteIntBuf(output, pos, color);
-                        pos = WriteRleBuf(output, pos, sixelRow, width);
-                        anyColor = true;
-                    }
-
-                    if (band < bandCount - 1) output[pos++] = (byte)'-';
+                    if (used[i] == 0) continue;
+                    // Round rather than truncate: 254 truncated to 99% reads back as 252
+                    int r = (palette[i * 4 + 2] * 100 + 127) / 255;
+                    int g = (palette[i * 4 + 1] * 100 + 127) / 255;
+                    int b = (palette[i * 4] * 100 + 127) / 255;
+                    span[pos++] = (byte)'#'; pos = WriteInt(span, pos, i);
+                    span[pos++] = (byte)';'; span[pos++] = (byte)'2'; span[pos++] = (byte)';';
+                    pos = WriteInt(span, pos, r); span[pos++] = (byte)';';
+                    pos = WriteInt(span, pos, g); span[pos++] = (byte)';';
+                    pos = WriteInt(span, pos, b);
                 }
+
+                output.Advance(pos);
             }
-            finally { ArrayPool<byte>.Shared.Return(sixelRow); }
+
+            // Bands of six rows
+            int bandCount = (height + 5) / 6;
+            Span<bool> colorPresent = stackalloc bool[256];
+            byte[]? sixelRow = _rowScratch;
+            if (sixelRow == null || sixelRow.Length < width)
+                _rowScratch = sixelRow = GC.AllocateUninitializedArray<byte>(Math.Max(width, 256));
+
+            for (int band = 0; band < bandCount; band++)
+            {
+                int yStart = band * 6;
+                int bandRows = Math.Min(6, height - yStart);
+
+                colorPresent.Clear();
+                int bandColors = 0;
+                int bandStart = yStart * width;
+                int bandEnd = bandStart + bandRows * width;
+                for (int i = bandStart; i < bandEnd; i++)
+                {
+                    byte c = Unsafe.Add(ref idxRef, i);
+                    if (!colorPresent[c]) { colorPresent[c] = true; bandColors++; }
+                }
+
+                // Worst case: every present color writes a full row of literals plus its header
+                Span<byte> span = output.GetSpan(bandColors * (width + 8) + 8);
+                int pos = 0;
+                bool anyColor = false;
+                for (int color = 0; color < paletteCount; color++)
+                {
+                    if (!colorPresent[color]) continue;
+                    BuildSixelRow(indexed, sixelRow, width, yStart, bandRows, (byte)color);
+                    if (anyColor) span[pos++] = (byte)'$';
+                    span[pos++] = (byte)'#'; pos = WriteInt(span, pos, color);
+                    pos = WriteRle(span, pos, sixelRow, width);
+                    anyColor = true;
+                }
+
+                if (band < bandCount - 1) span[pos++] = (byte)'-';
+                output.Advance(pos);
+            }
 
             // ST
-            output[pos++] = 0x1B; output[pos++] = (byte)'\\';
-
-            byte[] rendered = GC.AllocateUninitializedArray<byte>(pos);
-            output.AsSpan(0, pos).CopyTo(rendered);
-            _renderedBytes = rendered;
-            return rendered;
-        }
-
-        #endregion
-
-        #region Quantization
-
-        private const int ReservedSlots = 32;
-
-        private static void Quantize(byte[] bgrx, int pixelCount,
-            out byte[] palette, out int paletteCount, out int reservedCount, out byte[] indexed)
-        {
-            // --- Pass 1: count frequency of each unique color ---
-            var freq = new Dictionary<uint, int>();
-            for (int i = 0, off = 0; i < pixelCount; i++, off += 4)
             {
-                uint key = (uint)bgrx[off]
-                    | ((uint)bgrx[off + 1] << 8)
-                    | ((uint)bgrx[off + 2] << 16);
-                if (freq.TryGetValue(key, out int c))
-                    freq[key] = c + 1;
-                else
-                    freq[key] = 1;
+                Span<byte> span = output.GetSpan(2);
+                span[0] = 0x1B; span[1] = (byte)'\\';
+                output.Advance(2);
             }
-
-            // --- Build reserved palette from top-frequency colors ---
-            var sorted = new List<KeyValuePair<uint, int>>(freq);
-            sorted.Sort((a, b) => b.Value.CompareTo(a.Value));
-
-            reservedCount = Math.Min(ReservedSlots, sorted.Count);
-
-            var reservedMap = new Dictionary<uint, byte>(reservedCount);
-            byte[] reservedPalette = new byte[reservedCount * 4];
-            for (int i = 0; i < reservedCount; i++)
-            {
-                uint bgr = sorted[i].Key;
-                reservedMap[bgr] = (byte)i;
-                reservedPalette[i * 4] = (byte)bgr;
-                reservedPalette[i * 4 + 1] = (byte)(bgr >> 8);
-                reservedPalette[i * 4 + 2] = (byte)(bgr >> 16);
-                reservedPalette[i * 4 + 3] = 0;
-            }
-
-            // --- Pass 2: build filtered pixel buffer (non-reserved pixels only) ---
-            int filteredCount = 0;
-            for (int i = 0, off = 0; i < pixelCount; i++, off += 4)
-            {
-                uint key = (uint)bgrx[off]
-                    | ((uint)bgrx[off + 1] << 8)
-                    | ((uint)bgrx[off + 2] << 16);
-                if (!reservedMap.ContainsKey(key))
-                    filteredCount++;
-            }
-
-            byte[] filteredBgrx;
-            if (filteredCount > 0)
-            {
-                filteredBgrx = new byte[filteredCount * 4];
-                int dst = 0;
-                for (int i = 0, off = 0; i < pixelCount; i++, off += 4)
-                {
-                    uint key = (uint)bgrx[off]
-                        | ((uint)bgrx[off + 1] << 8)
-                        | ((uint)bgrx[off + 2] << 16);
-                    if (!reservedMap.ContainsKey(key))
-                    {
-                        filteredBgrx[dst] = bgrx[off];
-                        filteredBgrx[dst + 1] = bgrx[off + 1];
-                        filteredBgrx[dst + 2] = bgrx[off + 2];
-                        filteredBgrx[dst + 3] = bgrx[off + 3];
-                        dst += 4;
-                    }
-                }
-            }
-            else
-            {
-                // All pixels are reserved colors — no dynamic quantization needed
-                palette = reservedPalette;
-                paletteCount = reservedCount;
-                indexed = QuantizeWithPalette(bgrx, palette, paletteCount, pixelCount, reservedCount);
-                return;
-            }
-
-            // --- Quantize only the filtered pixels into dynamic slots ---
-            var wuQuantizer = _quantizer ??= new WuColorQuantizer();
-            int dynamicSlots = Math.Max(1, 256 - reservedCount);
-            var dynamicResult = wuQuantizer.Quantize(filteredBgrx, dynamicSlots);
-            int dynamicCount = dynamicResult.Palette.Length / 4;
-
-            // --- Build combined palette: reserved first, then dynamic ---
-            paletteCount = reservedCount + dynamicCount;
-            palette = new byte[paletteCount * 4];
-            Array.Copy(reservedPalette, 0, palette, 0, reservedCount * 4);
-            Array.Copy(dynamicResult.Palette, 0, palette, reservedCount * 4, dynamicCount * 4);
-
-            // --- Re-index all pixels: exact match for reserved, approximate for rest ---
-            indexed = QuantizeWithPalette(bgrx, palette, paletteCount, pixelCount, reservedCount);
-        }
-
-
-        private static byte[] QuantizeWithPalette(byte[] bgrx, byte[] palette, int paletteCount,
-            int pixelCount = 0, int reservedCount = 0)
-        {
-            if (pixelCount == 0) pixelCount = bgrx.Length / 4;
-
-            // Build exact-match map for reserved colors if present
-            Dictionary<uint, byte>? reservedMap = null;
-            if (reservedCount > 0)
-            {
-                reservedMap = new Dictionary<uint, byte>(reservedCount);
-                for (int i = 0; i < reservedCount && i < paletteCount; i++)
-                {
-                    uint bgr = (uint)palette[i * 4]
-                        | ((uint)palette[i * 4 + 1] << 8)
-                        | ((uint)palette[i * 4 + 2] << 16);
-                    reservedMap.TryAdd(bgr, (byte)i);
-                }
-            }
-
-            byte[] indexed = GC.AllocateUninitializedArray<byte>(pixelCount);
-            ReadOnlySpan<byte> bgrxSpan = bgrx;
-            ReadOnlySpan<byte> paletteLookup = PaletteLookups.GetValue(palette,
-                static currentPalette => new PaletteLookup(currentPalette)).Lookup;
-
-            for (int i = 0, offset = 0; i < pixelCount; i++, offset += 4)
-            {
-                if (reservedMap != null)
-                {
-                    uint key = (uint)bgrxSpan[offset]
-                        | ((uint)bgrxSpan[offset + 1] << 8)
-                        | ((uint)bgrxSpan[offset + 2] << 16);
-                    if (reservedMap.TryGetValue(key, out byte reservedIdx))
-                    {
-                        indexed[i] = reservedIdx;
-                        continue;
-                    }
-                }
-
-                int b = bgrxSpan[offset];
-                int g = bgrxSpan[offset + 1];
-                int r = bgrxSpan[offset + 2];
-                int lookupIndex = ((r >> PaletteLookup.ChannelShift) << (PaletteLookup.ChannelBits * 2)) |
-                    ((g >> PaletteLookup.ChannelShift) << PaletteLookup.ChannelBits) |
-                    (b >> PaletteLookup.ChannelShift);
-                indexed[i] = paletteLookup[lookupIndex];
-            }
-
-            return indexed;
         }
 
         #endregion
@@ -437,7 +377,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         #region Buffer helpers
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int WriteIntBuf(byte[] buf, int pos, int value)
+        private static int WriteInt(Span<byte> buf, int pos, int value)
         {
             if (value < 10) { buf[pos] = (byte)('0' + value); return pos + 1; }
             if (value < 100) { buf[pos] = (byte)('0' + value / 10); buf[pos + 1] = (byte)('0' + value % 10); return pos + 2; }
@@ -449,7 +389,7 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int WriteRleBuf(byte[] output, int pos, byte[] data, int length)
+        private static int WriteRle(Span<byte> output, int pos, byte[] data, int length)
         {
             int i = 0;
             while (i < length)
@@ -457,49 +397,11 @@ namespace Iciclecreek.Avalonia.SixelBuffer.Rendering
                 byte ch = data[i];
                 int run = 1;
                 while (i + run < length && data[i + run] == ch) run++;
-                if (run >= 4) { output[pos++] = (byte)'!'; pos = WriteIntBuf(output, pos, run); output[pos++] = ch; }
+                if (run >= 4) { output[pos++] = (byte)'!'; pos = WriteInt(output, pos, run); output[pos++] = ch; }
                 else { for (int j = 0; j < run; j++) output[pos++] = ch; }
                 i += run;
             }
             return pos;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static T[] RentOrGrow<T>(ref T[]? buf, int minSize)
-        {
-            if (buf == null || buf.Length < minSize)
-                buf = GC.AllocateUninitializedArray<T>(Math.Max(minSize, 4096));
-            return buf;
-        }
-
-        private sealed class PaletteLookup
-        {
-            public const int ChannelBits = 5;
-            public const int ChannelShift = 8 - ChannelBits;
-            private const int LookupSize = 1 << (ChannelBits * 3);
-
-            public PaletteLookup(byte[] palette)
-            {
-                Lookup = GC.AllocateUninitializedArray<byte>(LookupSize);
-                int paletteCount = palette.Length / 4;
-                for (int index = 0; index < Lookup.Length; index++)
-                {
-                    int r = ((index >> (ChannelBits * 2)) & ((1 << ChannelBits) - 1)) << ChannelShift;
-                    int g = ((index >> ChannelBits) & ((1 << ChannelBits) - 1)) << ChannelShift;
-                    int b = (index & ((1 << ChannelBits) - 1)) << ChannelShift;
-                    int bestIdx = 0, bestDist = int.MaxValue;
-                    for (int pi = 0; pi < paletteCount; pi++)
-                    {
-                        int po = pi * 4;
-                        int db = b - palette[po], dg = g - palette[po + 1], dr = r - palette[po + 2];
-                        int dist = dr * dr + dg * dg + db * db;
-                        if (dist < bestDist) { bestDist = dist; bestIdx = pi; }
-                    }
-                    Lookup[index] = (byte)bestIdx;
-                }
-            }
-
-            public byte[] Lookup { get; }
         }
 
         #endregion

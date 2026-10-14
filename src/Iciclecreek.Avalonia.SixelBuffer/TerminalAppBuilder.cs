@@ -10,19 +10,22 @@ namespace Iciclecreek.Avalonia.SixelBuffer
     public static class TerminalAppBuilder
     {
         /// <summary>
-        ///     Configure Avalonia to render to a terminal using Sixel graphics.
+        ///     Configure Avalonia to render to a terminal using Sixel or kitty graphics.
         /// </summary>
         /// <param name="builder">The app builder.</param>
         /// <param name="fps">Render frames per second (default 10). Higher values give
         /// smoother animations but use more CPU; lower values are gentler on the terminal.</param>
-        public static AppBuilder UseSixelBuffer(this AppBuilder builder, int fps = 10)
+        /// <param name="protocol">The image protocol to use. <see cref="ImageProtocol.Auto"/> takes
+        /// kitty graphics when the terminal answers the kitty query and Sixel otherwise.</param>
+        public static AppBuilder UseSixelBuffer(this AppBuilder builder, int fps = 10,
+            ImageProtocol protocol = ImageProtocol.Auto)
         {
             TerminalPlatform.TargetFps = fps;
             builder.UseHarfBuzz();
             builder.UseSkia();
             builder.UseHarfBuzz();
 
-            var terminal = new AnsiTerminal();
+            var terminal = new AnsiTerminal { PreferredProtocol = protocol };
             Action? initialize = builder.RenderingSubsystemInitializer;
 
             return builder
