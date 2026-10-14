@@ -55,8 +55,7 @@ internal static class Program
 ```
 
 ## Notes
-- **Terminal compatibility** -- Your terminal must support Sixel graphics. Tested with Windows Terminal, WezTerm, 
-- **Render rate** -- The default render timer runs at 10 FPS to balance responsiveness with terminal throughput. NOTE: If you set too high input will be starved.
+- **Terminal compatibility** -- Your terminal must support Sixel or kitty graphics. Tested with Windows Terminal, WezTerm, 
 - **No native Menus** -- Don't use NativeMenu/NativeMenuItem as they won't work in terminal mode. Use Avalonia's Menu control instead.
 - **No native popups** -- Popups and dropdown overlays are managed within the single terminal frame rather than as separate OS windows.
 - **Avalonia version pinning** -- The library uses Avalonia private APIs and must be pinned to the exact Avalonia version (currently 12.0.2).
